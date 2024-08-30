@@ -17,7 +17,7 @@ TRANSCRIPT_DB =                #"reference/transcripts.fasta"
 # À ajouter Controle de qualité   thread 34?
 
 
-
+3
 rule all:
     input:
         expand("data/quantification/{id}.tsv", id=idS),
