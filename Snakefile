@@ -1,8 +1,10 @@
 # Version 0.0.1 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
-# >>> Ajout  : procedures de manipulation ARNseq data
+# >>> Ajout  : procedures de manipulation ARNseq data avec les rules
+# >>> À ajouter : tout ce qui est path et le bon fonctionnement :)
+# Chaque rule est a corriger / rule all a ajouter et rule wildcards 
 
 
-
+#merge bam samtool/ module java
 ###USAGE example:
 
 #
@@ -56,7 +58,7 @@ TRANSCRIPT_DB =                #"reference/transcripts.fasta"
 
 
 
-# À ajouter Controle de qualité   thread 34?
+# À ajouter Controle de qualité   thread 32?
 
 
 
@@ -102,6 +104,13 @@ rule align_reads:
         "--alignMatesGapMax 200000 --alignIntronMax 200000 "
         "--alignSJstitchMismatchNmax '5-1 5 5' "
         "--outSAMprimaryFlag AllBestScore"
+
+
+#--runMode genomeGenerate
+#--genomeDir /path/to/genomeDir
+#--genomeFastaFiles /path/to/genome/fasta1 /path/to/genome/fasta2 ...
+#--sjdbGTFfile /path/to/annotations.gtf
+#--sjdbOverhang ReadLength-1
 
 # Règle pour la quantification des transcrits avec Kallisto    # Vérifier l'outil
 rule quantify_transcripts:
