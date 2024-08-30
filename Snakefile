@@ -16,6 +16,18 @@
 
 #configfile 
 
+
+#  des chemins des outils/fichiers
+TRIM_GALORE = "trim_galore"
+STAR = "STAR"
+KALLISTO = "kallisto"
+FREEBAYES = "freebayes"
+OPENVAR = "OpenVar"
+
+# fichiers de référence 
+REFERENCE_GENOME =             #"reference/GRCh38.p12.fasta"     ## l'article customDB
+TRANSCRIPT_DB =                #"reference/transcripts.fasta"
+
 # controle de qualité FastQC
 
 rule fastqc:
@@ -43,18 +55,6 @@ rule fastqc:
         "&> {log}" 
 
 
-
-
-#  des chemins des outils/fichiers
-TRIM_GALORE = "trim_galore"
-STAR = "STAR"
-KALLISTO = "kallisto"
-FREEBAYES = "freebayes"
-OPENVAR = "OpenVar"
-
-# fichiers de référence 
-REFERENCE_GENOME =             #"reference/GRCh38.p12.fasta"     ## l'article customDB
-TRANSCRIPT_DB =                #"reference/transcripts.fasta"
 
 
 
