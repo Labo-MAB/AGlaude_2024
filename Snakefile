@@ -5,19 +5,19 @@
 
 
 #merge bam samtool/ module java
-###USAGE example:
+###USAGE example(explication/détails des outils): 
 
+#####
 #
-
-
-
-###
+#
+#
+#####
 
 
 #configfile 
 
 
-#  des chemins des outils/fichiers
+#chemins des outils/fichiers
 TRIM_GALORE = "trim_galore"
 STAR = "STAR"
 KALLISTO = "kallisto"
@@ -27,6 +27,15 @@ OPENVAR = "OpenVar"
 # fichiers de référence 
 REFERENCE_GENOME =             #"reference/GRCh38.p12.fasta"     ## l'article customDB
 TRANSCRIPT_DB =                #"reference/transcripts.fasta"
+
+
+
+rule all:
+    input:
+        expand(),
+        expand()
+
+
 
 # controle de qualité FastQC
 
@@ -56,16 +65,9 @@ rule fastqc:
 
 
 
-
-
 # À ajouter Controle de qualité   thread 32?
 
 
-
-rule all:
-    input:
-        expand(),
-        expand()
 
 
 # Règle pour le trimming   trim_galore   # Vérifier l'outil
