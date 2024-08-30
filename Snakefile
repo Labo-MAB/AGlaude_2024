@@ -1,6 +1,15 @@
 # Version 0.0.1 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> Ajout  : procedures de manipulation ARNseq data
 
+
+
+###USAGE example:
+
+
+
+
+
+###
 #  des chemins des outils/fichiers
 TRIM_GALORE = "trim_galore"
 STAR = "STAR"
