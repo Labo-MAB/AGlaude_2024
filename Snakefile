@@ -10,6 +10,39 @@
 
 
 ###
+
+
+#configfile 
+
+# controle de qualité FastQC
+
+rule fastqc:
+    """ Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
+    input:
+        fq1 = "/{id}_1.fastq.gz",
+        fq2 = "/{id}_2.fastq.gz"
+    output:
+        qc_fq1_out = "/qc/{id}_1_fastqc.html",
+        qc_fq2_out = "/qc/{id}_2_fastqc.html"
+    params:
+        out_dir = "/qc"
+    log:
+        
+    threads:
+        
+    conda:
+        
+    shell:
+        "fastqc "
+        "--outdir {params.out_dir} "
+        "--format fastq "
+        "--threads {threads} "
+        "{input.fq1} {input.fq2} "
+        "&> {log}" 
+
+
+
+
 #  des chemins des outils/fichiers
 TRIM_GALORE = "trim_galore"
 STAR = "STAR"
@@ -29,18 +62,18 @@ TRANSCRIPT_DB =                #"reference/transcripts.fasta"
 
 rule all:
     input:
-        expand("data/quantification/{id}.tsv", id=idS),
-        expand("data/variants/{id}_annotated.vcf", id=idS)
+        expand(),
+        expand()
 
 
-# Règle pour le trimming      # Vérifier l'outil
+# Règle pour le trimming   trim_galore   # Vérifier l'outil
 rule trim_reads:
     input:
-        fq1 = "data/fastq/{id}_1.fastq.gz",
-        fq2 = "data/fastq/{id}_2.fastq.gz"
+        fq1 = "/{id}_1.fastq.gz",
+        fq2 = "/{id}_2.fastq.gz"
     output:
-        fq1_trimmed = "data/trimmed/{id}_1_trimmed.fq.gz",
-        fq2_trimmed = "data/trimmed/{id}_2_trimmed.fq.gz"
+        fq1_trimmed = "/{id}_1_trimmed.fq.gz",
+        fq2_trimmed = "/{id}_2_trimmed.fq.gz"
     params:
         trim_galore = TRIM_GALORE
     shell:
@@ -53,8 +86,8 @@ rule trim_reads:
 # Règle pour l'alignement  STAR     # Vérifier l'outil
 rule align_reads:
     input:
-        fq1 = "data/trimmed/{id}_1_trimmed.fq.gz",
-        fq2 = "data/trimmed/{id}_2_trimmed.fq.gz"
+        fq1 = "/{id}_1_trimmed.fq.gz",
+        fq2 = "/{id}_2_trimmed.fq.gz"
     output:
         bam = "data/aligned/{id}.bam"
     params:
