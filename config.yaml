@@ -1,0 +1,14 @@
+name: snakemake
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - snakemake
+  - fastqc
+  - trim-galore
+  - cutadapt
+  - star
+  - kallisto
+  - bcftools  # Alternative pour `freebayes` si `freebayes` est introuvable
+  - python
