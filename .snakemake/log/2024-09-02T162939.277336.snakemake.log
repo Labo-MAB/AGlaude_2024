@@ -1,0 +1,3 @@
+NameError in file C:\Users\Anthony\Documents\breast_cancer\Snakefile, line 41:
+name 'f' is not defined
+  File "C:\Users\Anthony\Documents\breast_cancer\Snakefile", line 41, in <module>

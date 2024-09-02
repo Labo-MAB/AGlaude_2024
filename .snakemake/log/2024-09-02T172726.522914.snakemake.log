@@ -1,0 +1,26 @@
+Building DAG of jobs...
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Conda environments: ignored
+Job stats:
+job           count
+----------  -------
+all               1
+fastqc            1
+qc_fastp          1
+trim_reads        1
+total             4
+
+Select jobs to execute...
+
+[Mon Sep  2 17:27:27 2024]
+rule fastqc:
+    input: C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz, C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz
+    output: data/qc/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_1_fastqc.html, data/qc/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_2_fastqc.html
+    log: logs/fastqc_171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001.log
+    jobid: 1
+    reason: Missing output files: data/qc/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_1_fastqc.html, data/qc/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_2_fastqc.html
+    wildcards: id=171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001
+    threads: 8
+    resources: tmpdir=C:\Users\Anthony\AppData\Local\Temp
+
