@@ -1,0 +1,21 @@
+host: DESKTOP-LLO24HI
+Building DAG of jobs...
+Your conda installation is not configured to use strict channel priorities. This is however crucial for having robust and correct environments (for details, see https://conda-forge.org/docs/user/tipsandtricks.html). Please consider to configure strict priorities by executing 'conda config --set channel_priority strict'.
+Creating conda environment envs\fastqc.yml...
+Downloading and installing remote packages.
+CreateCondaEnvironmentException:
+Could not create conda environment from C:\Users\Anthony\OneDrive\Documents\udes\3- Automne 2024\BCM624 8 - credit\breast_cancer\workflow\envs/fastqc.yml:
+Command:
+conda env create --quiet --no-default-packages --file "C:\Users\Anthony\OneDrive\Documents\udes\3- Automne 2024\BCM624 8 - credit\breast_cancer\workflow\.snakemake\conda\8a5769161cf2408a777afb2c6b98fbea_.yaml" --prefix "C:\Users\Anthony\OneDrive\Documents\udes\3- Automne 2024\BCM624 8 - credit\breast_cancer\workflow\.snakemake\conda\8a5769161cf2408a777afb2c6b98fbea_"
+Output:
+Channels:
+ - bioconda
+ - conda-forge
+ - defaults
+Platform: win-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+InvalidArchiveError('Error with archive C:\\Users\\Anthony\\miniconda3\\envs\\snakemake\\pkgs\\fastqc-0.11.8-2.tar.bz2.  You probably need to delete and re-download or re-create this file.  Message was:\n\nfailed with error: seeking backwards is not allowed')
+
+
