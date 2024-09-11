@@ -12,17 +12,28 @@
 #
 #
 #####
-import os
-from pathlib import Path
+
+
+configfile: "config.yaml"
+
+
 import pandas as pd
+import os
+# Fichiers de référence
+REFERENCE_GENOME = "reference/GRCh38.p12.fasta"
+TRANSCRIPT_DB = "reference/transcripts.fasta"
+KALLISTO_INDEX = "reference/kallisto_index"
 
 
-configfile: "../config/config.json"
+
+
+
+
 
 
 
 # test de paths
-fastq_dir
+fastq_dir = "C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/"
 files = [
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_1.fastq.gz",
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_2.fastq.gz",
@@ -44,7 +55,10 @@ KALLISTO = "kallisto"
 FREEBAYES = "freebayes"
 OPENVAR = "OpenVar"
 
-
+# Définir le répertoire des FASTQ
+fastq_dir = "C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/"
+output_dir = "data/fastp/"
+log_dir = "logs/fastp/"
 
 id_list = [
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001"
@@ -81,7 +95,7 @@ rule fastqc:
         "logs/fastqc_{id}.log"
     threads: 8
     conda:
-        "../envs/fastqc.yaml"  # a corriger ; conda n'installe pas fastqc
+        "envs/fastqc.yaml"  # a corriger ; conda n'installe pas fastqc
     shell:
         "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log}"
 
