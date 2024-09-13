@@ -1,3 +1,0 @@
-FileNotFoundError in file C:\Users\Anthony\Documents\breast_cancer\Snakefile, line 23:
-[Errno 2] No such file or directory: 'SRR_id.txt'
-  File "C:\Users\Anthony\Documents\breast_cancer\Snakefile", line 23, in <module>

@@ -1,9 +1,0 @@
-Building DAG of jobs...
-MissingInputException in rule all in file C:\Users\Anthony\Documents\breast_cancer\Snakefile, line 72:
-Missing input files for rule all:
-    affected files:
-        data/fastp/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_1_trimmed.fastq.gz
-        data/quantification/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001.tsv
-        data/fastp/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_2_trimmed.fastq.gz
-        data/aligned/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001.bam
-        data/variants/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_annotated.vcf

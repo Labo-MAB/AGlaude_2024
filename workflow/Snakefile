@@ -1,9 +1,11 @@
-# Version 0.0.1 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
+# Version 0.1.0 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> Ajout  : procedures de manipulation ARNseq data avec les rules
 # >>> À ajouter : tout ce qui est path et le bon fonctionnement :)
 # Chaque rule est a corriger / rule all a ajouter et rule wildcards 
-
-
+# FastQc -> Controle qualité sur les datas
+# Trim_Galore -> Trimming des FastQc 
+# FastQc -> Vérification que le trimming s'est bien déroulé
+# Star -> alignement sur génome de reference  ***
 #merge bam samtool/ module java
 ###USAGE example(explication/détails des outils): 
 
@@ -25,18 +27,17 @@ configfile: "../config/config.json"
 
 # test de paths
 
-fastq_dir= "C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/"
+#fastq_dir= "C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/"  # sur pc
+
+fastq_dir = "/mnt/c/Users/Antho/OneDrive - USherbrooke/Documents/1/" # sur portable
 files = [
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R1_001.220405.A00516.AHVHTNDSX2.fastq",
-    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz", # portable reconnait .gz mais pas sur pc
 ]
 
 for file in files:
     path = os.path.join(fastq_dir, file)
     print(f"Checking: {path} -> {os.path.exists(path)}")
-
-
-
 
 
 # Chemins des outils/fichiers
@@ -49,8 +50,9 @@ OPENVAR = "OpenVar"
 
 
 id_list = [
-    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"
-    # Ajoutez d'autres identifiants ici si nécessaire
+    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  #pc
+    #"171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001"   #portable
+
 ]
 
 print(f"Current working directory: {os.getcwd()}")
@@ -64,10 +66,10 @@ rule all:
     input:
         expand("data/qc/{id}_1_fastqc.html", id=id_list),
         expand("data/qc/{id}_2_fastqc.html", id=id_list),
-        expand("data/fastp/{id}_1_trimmed.fastq.gz", id=id_list),
-        expand("data/fastp/{id}_2_trimmed.fastq.gz", id=id_list),
-        #expand("data/qc_fastp/{id}_1_fastqc.html", id=id_list),
-        #expand("data/qc_fastp/{id}_2_fastqc.html", id=id_list),
+        expand("data/trim_galore/{id}_1_trimmed.fastq.gz", id=id_list),
+        expand("data/trim_galore/{id}_2_trimmed.fastq.gz", id=id_list),
+        expand("data/qc_trim_galore/{id}_1_fastqc.html", id=id_list),
+        expand("data/qc_trim_galore/{id}_2_fastqc.html", id=id_list),
         #expand("data/aligned/{id}.bam", id=id_list),
         #expand("data/quantification/{id}.tsv", id=id_list),
         #expand("data/variants/{id}_annotated.vcf", id=id_list)
@@ -86,69 +88,70 @@ rule fastqc:
         "logs/fastqc_{id}.log"
     threads: 8
     conda:
-        "envs/fastqc.yml"  # a corriger ; conda n'installe pas fastqc
+        "envs/fastqc.yml"  
     shell:
         "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log}"
 
-# Règle pour le trimming avec fastp
+# Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
         fq1 = fastq_dir +"{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
         fq2 = fastq_dir +"{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
-        fastq1 = "data/fastp/{id}_1_trimmed.fastq.gz",
-        fastq2 = "data/fastp/{id}_2_trimmed.fastq.gz",
-        unpaired_fastq1 = "data/fastp/{id}_1.unpaired.fastq.gz",
-        unpaired_fastq2 = "data/fastp/{id}_2.unpaired.fastq.gz",
-        html_report = "data/fastp/{id}_fastp.html",
-        json_report = "data/fastp/{id}_fastp.json"
-
+        gal_trim1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
+        gal_trim2 = "data/trim_galore/{id}_2_trimmed.fastq.gz",
+        unpaired_gal_trim1 = "data/trim_galore/{id}_1.unpaired.fastq.gz",
+        unpaired_gal_trim2 = "data/trim_galore/{id}_2.unpaired.fastq.gz",
+        html_report = "data/trim_galore/{id}tgalore.html",
+        json_report = "data/trim_galore/{id}_tgalore.json"
     threads:
         8
-    params:
-        options = ["--qualified_quality_phred 30", "--length_required 20",
-                "--cut_window_size 1", "--cut_mean_quality 30", "--cut_front",
-                "--cut_tail"]
-    log:
-        "logs/fastp/{id}.log"
     conda:
-        "envs/fastqc.yml"
+        "envs/trim_galore.yml"
+    params:
+        trim_galore = TRIM_GALORE
+    log:
+        "logs/trim_{id}.log"
     shell:
-        "fastp -i {input.fq1} -I {input.fq2} "
-        "-o {output.fastq1} -O {output.fastq2} "
-        "--unpaired1 {output.unpaired_fastq1} "
-        "--unpaired2 {output.unpaired_fastq2} "
-        "--thread {threads} "
-        "-h {output.html_report} "
-        "-j {output.json_report} "
-        "{params.options} "
-        "&> {log}"
+        "{params.trim_galore} --paired {input.fq1} {input.fq2} --output_dir data/fastp --gzip &> {log}"
 
 
-#        
+
 #    params:
-#        trim_galore = TRIM_GALORE
+#        options = ["--qualified_quality_phred 30", "--length_required 20",
+#                "--cut_window_size 1", "--cut_mean_quality 30", "--cut_front",
+#                "--cut_tail"]
 #    log:
-#        "logs/trim_{id}.log"
+#        "logs/fastp/{id}.log"
+#    conda:
+#        "envs/fastqc.yml"
 #    shell:
-#        "{params.trim_galore} --paired {input.fq1} {input.fq2} --output_dir data/fastp --gzip &> {log}"
-#
+#        "fastp -i {input.fq1} -I {input.fq2} "
+#        "-o {output.fastq1} -O {output.fastq2} "
+#        "--unpaired1 {output.unpaired_fastq1} "
+#        "--unpaired2 {output.unpaired_fastq2} "
+#        "--thread {threads} "
+#        "-h {output.html_report} "
+#        "-j {output.json_report} "
+#        "{params.options} "
+#        "&> {log}"
+
 rule qc_fastp:
     """ Assess the FASTQ quality using FastQC AFTER TRIMMING"""
     input:
-        trimm_fq1 = rules.trim_reads.output.fastq1,
-        trimm_fq2 = rules.trim_reads.output.fastq2,
-        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired_fastq1,
-        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired_fastq2
+        trimm_fq1 = rules.trim_reads.output.gal_trim1,
+        trimm_fq2 = rules.trim_reads.output.gal_trim2,
+        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired_gal_trim1,
+        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired_gal_trim2
     output:
-        qc_trimm_fq1_out = "data/qc_fastp/{id}_1_fastqc.html",
-        qc_trimm_fq2_out = "data/qc_fastp/{id}_2_fastqc.html"
+        qc_trimm_fq1_out = "data/qc_trim_galore/{id}_1_fastqc.html",
+        qc_trimm_fq2_out = "data/qc_trim_galore/{id}_2_fastqc.html"
     params:
-        out_dir = "data/qc_fastp"
+        out_dir = "data/qc_trim_galore"
     log:
-        "logs/qc_fastp/{id}.log"
+        "logs/qc_trim_galore/{id}.log"
     threads:
-        20
+        8
     conda:
         "envs/fastqc.yml"
     shell:
@@ -165,8 +168,8 @@ rule qc_fastp:
 # Règle pour l'alignement avec STAR
 #rule align_reads:
 #    input:
-#        fq1 = "data/fastp/{id}_1_trimmed.fastq.gz",
-#        fq2 = "data/fastp/{id}_2_trimmed.fastq.gz"
+#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
+#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz"
 #    output:
 #        bam = "data/aligned/{id}.bam"
 #    params:
@@ -188,8 +191,8 @@ rule qc_fastp:
 ## Règle pour la quantification des transcrits avec Kallisto
 #rule quantify_transcripts:
 #    input:
-#        fq1 = "data/fastp/{id}_1_trimmed.fastq.gz",
-#        fq2 = "data/fastp/{id}_2_trimmed.fastq.gz",
+#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
+#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz",
 #        index = KALLISTO_INDEX
 #    output:
 #        tpm = "data/quantification/{id}.tsv"
