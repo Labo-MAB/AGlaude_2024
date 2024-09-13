@@ -109,7 +109,7 @@ rule trim_reads:
     conda:
         "envs/trim_galore.yml"
     params:
-        trim_galore = TRIM_GALORE
+        trim_galore = TRIM_GALORE   #### ????
     log:
         "logs/trim_{id}.log"
     shell:
