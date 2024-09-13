@@ -164,7 +164,7 @@ rule qc_fastp:
         "&> {log}" 
 
 
-
+############# Star se fera dans une config a part 
 # Règle pour l'alignement avec STAR
 #rule align_reads:
 #    input:
@@ -188,6 +188,8 @@ rule qc_fastp:
 #        "--alignSJstitchMismatchNmax '5-1 5 5' "
 #        "--outSAMprimaryFlag AllBestScore &> {log}"
 #
+
+
 ## Règle pour la quantification des transcrits avec Kallisto
 #rule quantify_transcripts:
 #    input:
