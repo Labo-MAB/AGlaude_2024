@@ -24,17 +24,20 @@ import pandas as pd
 configfile: "../profile_local/config.yaml"
 configfile: "../config/config.json"
 
+#include Star et suite
+include: "rules/download_genome.smk"  
+#include: "rules/star.smk"
+#include "rules/analysis.smk"
 
 # test de paths
+fastq_dir = "/mnt/c/Users/Antho/Documents/breast_cancer/data/" # sur portable
 
-#fastq_dir= "C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/"  # sur pc
-
-fastq_dir = "/mnt/c/Users/Antho/OneDrive - USherbrooke/Documents/1/" # sur portable
 files = [
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R1_001.220405.A00516.AHVHTNDSX2.fastq",
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz", # portable reconnait .gz mais pas sur pc
 ]
 
+############################################
 for file in files:
     path = os.path.join(fastq_dir, file)
     print(f"Checking: {path} -> {os.path.exists(path)}")
@@ -62,6 +65,8 @@ print(f"Path to check: {path}")
 print(f"File exists: {os.path.exists(path)}")
 path = "envs/fastqc.yml"
 print(f"Checking: {path} -> {os.path.exists(path)}")
+
+############################################
 rule all:
     input:
         expand("data/qc/{id}_1_fastqc.html", id=id_list),
@@ -73,6 +78,12 @@ rule all:
         #expand("data/aligned/{id}.bam", id=id_list),
         #expand("data/quantification/{id}.tsv", id=id_list),
         #expand("data/variants/{id}_annotated.vcf", id=id_list)
+
+rule download_genome:
+    input:
+        gff3 = 'data/references/gff3/homo_sapiens.gff3',
+        genome = 'data/references/genome_fa/homo_sapiens_genome.fa',
+
 
 rule fastqc:
     """Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
@@ -113,28 +124,11 @@ rule trim_reads:
     log:
         "logs/trim_{id}.log"
     shell:
-        "{params.trim_galore} --paired {input.fq1} {input.fq2} --output_dir data/fastp --gzip &> {log}"
+        "{params.trim_galore} --paired {input.fq1} {input.fq2} --output_dir data/trim_galore --gzip &> {log}"
 
 
 
-#    params:
-#        options = ["--qualified_quality_phred 30", "--length_required 20",
-#                "--cut_window_size 1", "--cut_mean_quality 30", "--cut_front",
-#                "--cut_tail"]
-#    log:
-#        "logs/fastp/{id}.log"
-#    conda:
-#        "envs/fastqc.yml"
-#    shell:
-#        "fastp -i {input.fq1} -I {input.fq2} "
-#        "-o {output.fastq1} -O {output.fastq2} "
-#        "--unpaired1 {output.unpaired_fastq1} "
-#        "--unpaired2 {output.unpaired_fastq2} "
-#        "--thread {threads} "
-#        "-h {output.html_report} "
-#        "-j {output.json_report} "
-#        "{params.options} "
-#        "&> {log}"
+
 
 rule qc_fastp:
     """ Assess the FASTQ quality using FastQC AFTER TRIMMING"""
@@ -163,50 +157,182 @@ rule qc_fastp:
         "{input.trimm_unpaired_fq1} {input.trimm_unpaired_fq2} "
         "&> {log}" 
 
+rule star_index:
+    """ Generates the genome index for STAR """
+    input:
+        fasta = rules.download_human_genome.output.genome,
+        gtf = config['download']['human_gtf']
+    output:
+        chrNameLength = config['path']['chrNameLength']
+    params:
+        dir = config['path']['star_index']
+    log:
+        "logs/STAR/index.log"
+    conda:
+        "../envs/star.yml"
+    threads:
+        32
+    shell:
+        "mkdir -p {params.dir} && "
+        "STAR --runThreadN {threads} "
+        "--runMode genomeGenerate "
+        "--genomeDir {params.dir} "
+        "--genomeFastaFiles {input.fasta} "
+        "--sjdbGTFfile {input.gtf} "
+        "--sjdbOverhang 99"
+        "&> {log}"
 
-############# Star se fera dans une config a part 
-# Règle pour l'alignement avec STAR
-#rule align_reads:
-#    input:
-#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
-#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz"
-#    output:
-#        bam = "data/aligned/{id}.bam"
-#    params:
-#        star = STAR,
-#        genome = REFERENCE_GENOME
-#    log:
-#        "logs/star_{id}.log"
-#    threads: 8
-#    shell:
-#        "{params.star} --runThreadN {threads} --genomeDir {params.genome} "
-#        "--readFilesIn {input.fq1} {input.fq2} "
-#        "--outFileNamePrefix data/aligned/{wildcards.id} "
-#        "--outSAMtype BAM SortedByCoordinate "
-#        "--outFilterMismatchNmax 5 --alignSJoverhangMin 10 "
-#        "--alignMatesGapMax 200000 --alignIntronMax 200000 "
-#        "--alignSJstitchMismatchNmax '5-1 5 5' "
-#        "--outSAMprimaryFlag AllBestScore &> {log}"
-#
+
+rule star_alignReads:
+    """ Generates a bam file using STAR """
+    input:
+        idx = rules.star_index.output,
+        fq1 = rules.trim_reads.output.gal_trim1,
+        fq2 = rules.trim_reads.output.gal_trim2
+    output:
+        bam = "results/STAR/{id}/Aligned.sortedByCoord.out.bam",
+        bam_logs = "results/STAR/{id}/Log.final.out"
+    params:
+        index = config['path']['star_index'],
+        output_dir = "results/STAR/{id}/"
+    log:
+        "logs/STAR/{id}.log"
+    threads:
+        32
+    conda:
+        "../envs/star.yml"
+    shell:
+        "STAR --runMode alignReads "
+        "--genomeDir {params.index} "
+        "--readFilesIn {input.fq1} {input.fq2}  "
+        "--runThreadN {threads} "
+        "--readFilesCommand zcat "
+        "--outReadsUnmapped Fastx "
+        "--outFilterType BySJout "
+        "--outStd Log "
+        "--outSAMunmapped None "
+        "--outSAMtype BAM SortedByCoordinate "
+        "--outFileNamePrefix {params.output_dir} "
+        "--outFilterScoreMinOverLread 0.3 "
+        "--outFilterMatchNminOverLread 0.3 "
+        "--outFilterMultimapNmax 100 "
+        "--winAnchorMultimapNmax 100 "
+        "--limitBAMsortRAM 600000000000"
+        "--alignEndsProtrude 5 ConcordantPair "
+        "&> {log}"
 
 
-## Règle pour la quantification des transcrits avec Kallisto
-#rule quantify_transcripts:
-#    input:
-#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
-#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz",
-#        index = KALLISTO_INDEX
-#    output:
-#        tpm = "data/quantification/{id}.tsv"
-#    params:
-#        kallisto = KALLISTO
-#    log:
-#        "logs/kallisto_{id}.log"
-#    shell:
-#        "{params.kallisto} quant --index {input.index} --output-dir data/quantification/{wildcards.id} "
-#        "--pairs {input.fq1} {input.fq2} &> {log}"
-#
-## Règle pour l'appel de variants avec FreeBayes
+# Règle pour la quantification des transcrits avec Kallisto
+rule build_transcriptome:
+    input:
+        genome = rules.download_human_genome.output.genome,
+        gtf = config['download']['human_gtf']   
+    output:
+        config["path"]["transcriptome"]
+    conda:
+        "../envs/gffread.yml"
+    message:
+        "Build a reference transcriptome using gffread."
+    log:
+        "logs/build_transcriptome/build_transcriptome.log"
+    shell:
+        "gffread {input.gtf} -g {input.genome} -w {output}"
+
+
+rule kallisto_index:
+    input:
+        rules.build_transcriptome.output
+    output:
+        "data/references/kallisto.idx"
+    params:
+        31
+    conda:
+        "../envs/kallisto.yml"
+    log:
+        "logs/kallisto/index.log"
+    message:
+        "Builds an index from the FASTA file."
+    shell:
+        "kallisto index "
+        "--index={output} "
+        "--kmer-size={params} "
+        "{input} "
+        "&> {log}"
+
+
+rule kallisto_quant:
+    input:
+        idx = rules.kallisto_index.output,
+        fq1 = rules.trim_reads.output.gal_trim1,
+        fq2 = rules.trim_reads.output.gal_trim2
+    output:
+        "results/dge/kallisto/{id}/abundance.tsv"
+    params:
+        bootstrap = "50",
+        outdir = "results/dge/kallisto/{id}"
+    threads:
+        1
+    conda:
+        "../envs/kallisto.yml"
+    log:
+        "logs/kallisto/{id}.log"
+    message:
+        "Perform pseudoalignment and quantify transcript abundance for {wildcards.id}."
+    shell:
+        "kallisto quant "
+        "--bias "
+        "--index={input.idx} "
+        "--output-dir={params.outdir} "
+        "--bootstrap-samples={params.bootstrap} "
+        "--threads={threads} "
+        "{input.fq1} {input.fq2} "
+        "&> {log}"
+
+
+rule tx2gene:
+    input:
+        gtf = config['download']['human_gtf']
+    output:
+        tsv = "data/references/tx2gene.tsv"
+    conda:
+        "../envs/python.yml"
+    message:
+        "Convert transcript IDs to gene IDs."
+    script:
+        "../scripts/tx2gene.py"
+
+
+rule filter_gtf_pc_genes:
+    input:
+        gtf = config['download']['human_gtf']
+    output:
+        pc_gtf = "data/references/gtf/Homo_sapiens.GRCh38.110_snoRNAs_tRNAs.protein_coding.gtf"
+    log:
+        "logs/kallisto/filter_gtf_pc_genes.log"
+    message:
+        "Extract protein coding genes from the genome annotation file."
+    shell:
+        "grep \'protein_coding\' {input} > {output}"
+
+
+rule merge_kallisto_quant:
+    input:
+        quant = expand(rules.kallisto_quant.output, id = id_list),
+        tx2gene = rules.tx2gene.output.tsv,
+        gtf = rules.filter_gtf_pc_genes.output.pc_gtf
+    output:
+        tpm = "results/dge/kallisto/tpm.tsv"
+    conda:
+        "../envs/python.yml"
+    log:
+        "logs/kallisto/merge_kallisto_quant.log"
+    message:
+        "Merge kallisto quantification results into one dataframe for further analysis."
+    script:
+        "../scripts/merge_kallisto_quant.py"
+
+
+# Règle pour l'appel de variants avec FreeBayes
 #rule call_variants:
 #    input:
 #        bam = "data/aligned/{id}.bam"
@@ -233,3 +359,26 @@ rule qc_fastp:
 #    shell:
 #        "{params.openvar} -i {input.vcf} -t {input.transcript_db} -o {output.annotated_vcf} &> {log}"
 #
+
+
+
+
+###########fastp
+#    params:
+#        options = ["--qualified_quality_phred 30", "--length_required 20",
+#                "--cut_window_size 1", "--cut_mean_quality 30", "--cut_front",
+#                "--cut_tail"]
+#    log:
+#        "logs/fastp/{id}.log"
+#    conda:
+#        "envs/fastqc.yml"
+#    shell:
+#        "fastp -i {input.fq1} -I {input.fq2} "
+#        "-o {output.fastq1} -O {output.fastq2} "
+#        "--unpaired1 {output.unpaired_fastq1} "
+#        "--unpaired2 {output.unpaired_fastq2} "
+#        "--thread {threads} "
+#        "-h {output.html_report} "
+#        "-j {output.json_report} "
+#        "{params.options} "
+#        "&> {log}"

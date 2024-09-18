@@ -4,13 +4,10 @@
     "chrNameLength": "data/references/star_index/chrNameLength.txt",
     "star_index": "data/references/star_index/",
     "transcriptome": "data/references/transcriptome.fa",
-    "coco_git_link": "https://github.com/scottgroup/coco.git",
     "REFERENCE_GENOME": "reference/GRCh38.p12.fasta",
     "TRANSCRIPT_DB": "reference/transcripts.fasta",
     "KALLISTO_INDEX": "reference/kallisto_index",
-    "fastq_dir": "C:/Users/Anthony/OneDrive - USherbrooke/Documents/1/",
-    "output_dir": "data/fastp/",
-    "log_dir": "logs/fastp/"
+    "fastq_dir": "/mnt/c/Users/Antho/Documents/breast_cancer/data/"
   },
   "download": {
     "human_gtf": "data/references/gtf/Homo_sapiens.GRCh38.110_snoRNAs_tRNAs.gtf",

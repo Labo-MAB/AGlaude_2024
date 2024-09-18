@@ -2,7 +2,7 @@ channels:
   - bioconda
   - conda-forge
 dependencies:
-  - trim_galore
+  - trim-galore
   - fastqc
   - cutadapt
   - perl
