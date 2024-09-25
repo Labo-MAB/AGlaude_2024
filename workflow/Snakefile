@@ -1,14 +1,17 @@
-# Version 0.1.0 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
+# Version 0.2.0 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> Ajout  : procedures de manipulation ARNseq data avec les rules
-# >>> À ajouter : tout ce qui est path et le bon fonctionnement :)
+# >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
 # Chaque rule est a corriger / rule all a ajouter et rule wildcards 
 # FastQc -> Controle qualité sur les datas
 # Trim_Galore -> Trimming des FastQc 
 # FastQc -> Vérification que le trimming s'est bien déroulé
-# Star -> alignement sur génome de reference  ***
+# Star -> alignement sur génome de reference  *** 
 #merge bam samtool/ module java
 ###USAGE example(explication/détails des outils): 
+#18/09  pipeline fourni la fiche de controle qualité.html mais aussi le zip détaillé ; TRIM-GALORE DONNE UN FICHIER .GZ +TEXT EXPLICATIF, 
+# puis un autre controle qualité pour vérifier si trim-galore n'a pas trop tout détruit
 
+#A voir comment faire 
 #####
 #
 #
@@ -37,13 +40,13 @@ files = [
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz", # portable reconnait .gz mais pas sur pc
 ]
 
-############################################
+##################Région inutile##########################
 for file in files:
     path = os.path.join(fastq_dir, file)
     print(f"Checking: {path} -> {os.path.exists(path)}")
 
 
-# Chemins des outils/fichiers
+# Chemins des outils/fichiers (mais servent a rien)
 TRIM_GALORE = "trim_galore"
 STAR = "STAR"
 KALLISTO = "kallisto"
@@ -53,8 +56,7 @@ OPENVAR = "OpenVar"
 
 
 id_list = [
-    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  #pc
-    #"171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001"   #portable
+    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fcicher fera cela
 
 ]
 
@@ -66,7 +68,7 @@ print(f"File exists: {os.path.exists(path)}")
 path = "envs/fastqc.yml"
 print(f"Checking: {path} -> {os.path.exists(path)}")
 
-############################################
+######################Région inutile fini######################
 rule all:
     input:
         expand("data/qc/{id}_1_fastqc.html", id=id_list),
@@ -75,7 +77,7 @@ rule all:
         expand("data/trim_galore/{id}_2_trimmed.fastq.gz", id=id_list),
         expand("data/qc_trim_galore/{id}_1_fastqc.html", id=id_list),
         expand("data/qc_trim_galore/{id}_2_fastqc.html", id=id_list),
-        #expand("data/aligned/{id}.bam", id=id_list),
+        #expand("data/aligned/{id}.bam", id=id_list),   #freebayes
         #expand("data/quantification/{id}.tsv", id=id_list),
         #expand("data/variants/{id}_annotated.vcf", id=id_list)
 
@@ -88,7 +90,7 @@ rule download_genome:
 rule fastqc:
     """Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
     input:
-        fq1 = fastq_dir +"{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+        fq1 = fastq_dir +"{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",  # eviter les formats + pcq snakemake naime pas ?
         fq2 = fastq_dir +"{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
         qc_fq1_out = "data/qc/{id}_1_fastqc.html",
@@ -111,8 +113,8 @@ rule trim_reads:
     output:
         gal_trim1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
         gal_trim2 = "data/trim_galore/{id}_2_trimmed.fastq.gz",
-        unpaired_gal_trim1 = "data/trim_galore/{id}_1.unpaired.fastq.gz",
-        unpaired_gal_trim2 = "data/trim_galore/{id}_2.unpaired.fastq.gz",
+        trimm_unpaired_fq1 = optional("data/trim_galore/{id}_1.unpaired.fastq.gz"),
+        trimm_unpaired_fq2 = optional("data/trim_galore/{id}_2.unpaired.fastq.gz"),
         html_report = "data/trim_galore/{id}tgalore.html",
         json_report = "data/trim_galore/{id}_tgalore.json"
     threads:
@@ -128,15 +130,13 @@ rule trim_reads:
 
 
 
-
-
-rule qc_fastp:
+rule qc_fastq:
     """ Assess the FASTQ quality using FastQC AFTER TRIMMING"""
     input:
         trimm_fq1 = rules.trim_reads.output.gal_trim1,
         trimm_fq2 = rules.trim_reads.output.gal_trim2,
-        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired_gal_trim1,
-        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired_gal_trim2
+        trimm_unpaired_fq1 = optional(rules.trim_reads.output.unpaired_gal_trim1),
+        trimm_unpaired_fq2 = optional(rules.trim_reads.output.unpaired_gal_trim2)
     output:
         qc_trimm_fq1_out = "data/qc_trim_galore/{id}_1_fastqc.html",
         qc_trimm_fq2_out = "data/qc_trim_galore/{id}_2_fastqc.html"
@@ -157,11 +157,12 @@ rule qc_fastp:
         "{input.trimm_unpaired_fq1} {input.trimm_unpaired_fq2} "
         "&> {log}" 
 
+#### a corriger et a tester si ca fonctionne 
 rule star_index:
     """ Generates the genome index for STAR """
     input:
         fasta = rules.download_human_genome.output.genome,
-        gtf = config['download']['human_gtf']
+        gtf = config['download']['human_gtf']        #GRCh38.p14 reference
     output:
         chrNameLength = config['path']['chrNameLength']
     params:
@@ -171,7 +172,7 @@ rule star_index:
     conda:
         "../envs/star.yml"
     threads:
-        32
+        8
     shell:
         "mkdir -p {params.dir} && "
         "STAR --runThreadN {threads} "
@@ -183,7 +184,7 @@ rule star_index:
         "&> {log}"
 
 
-rule star_alignReads:
+rule star_alignreads:
     """ Generates a bam file using STAR """
     input:
         idx = rules.star_index.output,
@@ -198,7 +199,7 @@ rule star_alignReads:
     log:
         "logs/STAR/{id}.log"
     threads:
-        32
+        8
     conda:
         "../envs/star.yml"
     shell:
@@ -217,7 +218,7 @@ rule star_alignReads:
         "--outFilterMatchNminOverLread 0.3 "
         "--outFilterMultimapNmax 100 "
         "--winAnchorMultimapNmax 100 "
-        "--limitBAMsortRAM 600000000000"
+        "--limitBAMsortRAM 15000000000"         #15go RAM
         "--alignEndsProtrude 5 ConcordantPair "
         "&> {log}"
 
@@ -245,7 +246,7 @@ rule kallisto_index:
     output:
         "data/references/kallisto.idx"
     params:
-        31
+        8
     conda:
         "../envs/kallisto.yml"
     log:
