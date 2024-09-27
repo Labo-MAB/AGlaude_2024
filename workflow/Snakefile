@@ -108,13 +108,13 @@ rule fastqc:
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
-        fq1 = fastq_dir +"{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
-        fq2 = fastq_dir +"{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
+        fq1 = fastq_dir + "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+        fq2 = fastq_dir + "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
         gal_trim1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
         gal_trim2 = "data/trim_galore/{id}_2_trimmed.fastq.gz",
-        trimm_unpaired_fq1 = optional("data/trim_galore/{id}_1.unpaired.fastq.gz"),
-        trimm_unpaired_fq2 = optional("data/trim_galore/{id}_2.unpaired.fastq.gz"),
+#        trimm_unpaired_fq1 = optional("data/trim_galore/{id}_1.unpaired.fastq.gz"),
+#        trimm_unpaired_fq2 = optional("data/trim_galore/{id}_2.unpaired.fastq.gz"),
         html_report = "data/trim_galore/{id}tgalore.html",
         json_report = "data/trim_galore/{id}_tgalore.json"
     threads:
@@ -122,11 +122,15 @@ rule trim_reads:
     conda:
         "envs/trim_galore.yml"
     params:
-        trim_galore = TRIM_GALORE   #### ????
+        trim_galore = TRIM_GALORE  # Remplacez ceci par le chemin de Trim Galore
     log:
         "logs/trim_{id}.log"
     shell:
-        "{params.trim_galore} --paired {input.fq1} {input.fq2} --output_dir data/trim_galore --gzip &> {log}"
+        """
+        {params.trim_galore} --paired {input.fq1} {input.fq2} \
+        --output_dir data/trim_galore --gzip \
+        --unpaired &> {log}
+        """
 
 
 
@@ -135,8 +139,8 @@ rule qc_fastq:
     input:
         trimm_fq1 = rules.trim_reads.output.gal_trim1,
         trimm_fq2 = rules.trim_reads.output.gal_trim2,
-        trimm_unpaired_fq1 = optional(rules.trim_reads.output.unpaired_gal_trim1),
-        trimm_unpaired_fq2 = optional(rules.trim_reads.output.unpaired_gal_trim2)
+#        trimm_unpaired_fq1 = optional(rules.trim_reads.output.unpaired_gal_trim1),
+#        trimm_unpaired_fq2 = optional(rules.trim_reads.output.unpaired_gal_trim2)
     output:
         qc_trimm_fq1_out = "data/qc_trim_galore/{id}_1_fastqc.html",
         qc_trimm_fq2_out = "data/qc_trim_galore/{id}_2_fastqc.html"
@@ -360,6 +364,7 @@ rule merge_kallisto_quant:
 #    shell:
 #        "{params.openvar} -i {input.vcf} -t {input.transcript_db} -o {output.annotated_vcf} &> {log}"
 #
+
 
 
 
