@@ -1,3 +1,18 @@
+
+# À Utiliser la 1st fois, ensuite le fichier est sauvegardé
+#rule download_human_gtf:
+#    """ Download gtf of human genome from Ensembl """
+#    output:
+#        gtf = 'data/references/gtf/homo_sapiens.gtf'
+#    params:
+#        link = config['download']['human_gtf']
+#    shell:
+#        "wget -O temp.gz {params.link} && "
+#        "gunzip temp.gz && "
+#        "mv temp {output.gtf}"
+#
+
+
 rule download_human_gff3:
     """ Download gff3 of human genome from Ensembl """
     output:
