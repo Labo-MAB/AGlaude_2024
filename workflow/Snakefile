@@ -1,3 +1,4 @@
+fastq_dir = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/" #ordi
 # Version 0.2.0 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> Ajout  : procedures de manipulation ARNseq data avec les rules
 # >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
@@ -19,7 +20,7 @@
 #####
 import os
 from pathlib import Path
-import pandas as pd
+#import pandas as pd
 
 
 
@@ -34,6 +35,7 @@ include: "rules/download_genome.smk"
 
 # test de paths
 fastq_dir = "/mnt/c/Users/Antho/Documents/breast_cancer/data/" # sur portable
+fastq_dir = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/" #ordi
 
 files = [
     "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R1_001.220405.A00516.AHVHTNDSX2.fastq",
@@ -71,10 +73,10 @@ print(f"Checking: {path} -> {os.path.exists(path)}")
 ######################Région inutile fini######################
 rule all:
     input:
-        expand("data/qc/{id}_1_fastqc.html", id=id_list),
-        expand("data/qc/{id}_2_fastqc.html", id=id_list),
-        expand("data/trim_galore/{id}_1_trimmed.fastq.gz", id=id_list),
-        expand("data/trim_galore/{id}_2_trimmed.fastq.gz", id=id_list),
+        expand("data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
+        expand("data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
+        expand("data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),
+        expand("data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),
         expand("data/qc_trim_galore/{id}_1_fastqc.html", id=id_list),
         expand("data/qc_trim_galore/{id}_2_fastqc.html", id=id_list),
         #expand("data/aligned/{id}.bam", id=id_list),   #freebayes
@@ -90,48 +92,44 @@ rule download_genome:
 rule fastqc:
     """Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
     input:
-        fq1 = fastq_dir +"{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",  # eviter les formats + pcq snakemake naime pas ?
-        fq2 = fastq_dir +"{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
+        fq1 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+        fq2 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
-        qc_fq1_out = "data/qc/{id}_1_fastqc.html",
-        qc_fq2_out = "data/qc/{id}_2_fastqc.html"
+        qc_fq1_out = "data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html",
+        qc_fq2_out = "data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html"
     params:
         out_dir = "data/qc"
     log:
         "logs/fastqc_{id}.log"
     threads: 8
     conda:
-        "envs/fastqc.yml"  
+        "envs/fastqc.yml" 
     shell:
+        "mkdir -p {params.out_dir} && "
         "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log}"
 
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
-        fq1 = fastq_dir + "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
-        fq2 = fastq_dir + "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
+        fq1 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+        fq2 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
-        gal_trim1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
-        gal_trim2 = "data/trim_galore/{id}_2_trimmed.fastq.gz",
-#        trimm_unpaired_fq1 = optional("data/trim_galore/{id}_1.unpaired.fastq.gz"),
-#        trimm_unpaired_fq2 = optional("data/trim_galore/{id}_2.unpaired.fastq.gz"),
-        html_report = "data/trim_galore/{id}tgalore.html",
-        json_report = "data/trim_galore/{id}_tgalore.json"
+        gal_trim1 = "data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz",  # fichier validé pour R1
+        gal_trim2 = "data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  # fichier validé pour R2
+#        unpaired1 = "data/trim_galore/{id}_1_unpaired.fq.gz",  # fichier non apparié pour R1
+#        unpaired2 = "data/trim_galore/{id}_2_unpaired.fq.gz"   # fichier non apparié pour R2
     threads:
         8
     conda:
         "envs/trim_galore.yml"
-    params:
-        trim_galore = TRIM_GALORE  # Remplacez ceci par le chemin de Trim Galore
     log:
         "logs/trim_{id}.log"
     shell:
         """
-        {params.trim_galore} --paired {input.fq1} {input.fq2} \
+        trim_galore --paired {input.fq1} {input.fq2} \
         --output_dir data/trim_galore --gzip \
-        --unpaired &> {log}
+        &> {log}
         """
-
 
 
 rule qc_fastq:
@@ -139,8 +137,8 @@ rule qc_fastq:
     input:
         trimm_fq1 = rules.trim_reads.output.gal_trim1,
         trimm_fq2 = rules.trim_reads.output.gal_trim2,
-#        trimm_unpaired_fq1 = optional(rules.trim_reads.output.unpaired_gal_trim1),
-#        trimm_unpaired_fq2 = optional(rules.trim_reads.output.unpaired_gal_trim2)
+#        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired1,
+#        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired2
     output:
         qc_trimm_fq1_out = "data/qc_trim_galore/{id}_1_fastqc.html",
         qc_trimm_fq2_out = "data/qc_trim_galore/{id}_2_fastqc.html"
@@ -158,8 +156,8 @@ rule qc_fastq:
         "--format fastq "
         "--threads {threads} "
         "{input.trimm_fq1} {input.trimm_fq2} "
-        "{input.trimm_unpaired_fq1} {input.trimm_unpaired_fq2} "
-        "&> {log}" 
+#        "{input.trimm_unpaired_fq1} {input.trimm_unpaired_fq2} "
+        "&> {log}"
 
 #### a corriger et a tester si ca fonctionne 
 rule star_index:
