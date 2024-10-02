@@ -75,11 +75,11 @@ rule all:
     input:
         expand("data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
         expand("data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),
-        expand("data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),
-        expand("data/qc_trim_galore/{id}_1_fastqc.html", id=id_list),
-        expand("data/qc_trim_galore/{id}_2_fastqc.html", id=id_list),
-        #expand("data/aligned/{id}.bam", id=id_list),   #freebayes
+        expand("data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", id=id_list),  # Val_1 pour R1
+        expand("data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),  # Val_2 pour R2
+        expand("data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
+        expand("data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
+        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   #freebayes
         #expand("data/quantification/{id}.tsv", id=id_list),
         #expand("data/variants/{id}_annotated.vcf", id=id_list)
 
@@ -92,8 +92,8 @@ rule download_genome:
 rule fastqc:
     """Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
     input:
-        fq1 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
-        fq2 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
+        fq1 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+        fq2 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
         qc_fq1_out = "data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html",
         qc_fq2_out = "data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html"
@@ -111,13 +111,11 @@ rule fastqc:
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
-        fq1 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
-        fq2 = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
+        fq1 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+        fq2 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
     output:
-        gal_trim1 = "data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz",  # fichier validé pour R1
-        gal_trim2 = "data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  # fichier validé pour R2
-#        unpaired1 = "data/trim_galore/{id}_1_unpaired.fq.gz",  # fichier non apparié pour R1
-#        unpaired2 = "data/trim_galore/{id}_2_unpaired.fq.gz"   # fichier non apparié pour R2
+        gal_trim1 = "data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", # les fichiers validés par trim_galore
+        gal_trim2 = "data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz",  
     threads:
         8
     conda:
@@ -140,8 +138,8 @@ rule qc_fastq:
 #        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired1,
 #        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired2
     output:
-        qc_trimm_fq1_out = "data/qc_trim_galore/{id}_1_fastqc.html",
-        qc_trimm_fq2_out = "data/qc_trim_galore/{id}_2_fastqc.html"
+        qc_trimm_fq1_out = "data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html",
+        qc_trimm_fq2_out = "data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html"
     params:
         out_dir = "data/qc_trim_galore"
     log:
@@ -172,7 +170,7 @@ rule star_index:
     log:
         "logs/STAR/index.log"
     conda:
-        "../envs/star.yml"
+        "envs/star.yml"
     threads:
         8
     shell:
@@ -185,7 +183,7 @@ rule star_index:
         "--sjdbOverhang 99"
         "&> {log}"
 
-
+# Problème thère avec le conda-libmamba-solver  (libarchive) 
 rule star_alignreads:
     """ Generates a bam file using STAR """
     input:
@@ -203,7 +201,7 @@ rule star_alignreads:
     threads:
         8
     conda:
-        "../envs/star.yml"
+        "envs/star.yml"
     shell:
         "STAR --runMode alignReads "
         "--genomeDir {params.index} "
@@ -336,18 +334,18 @@ rule merge_kallisto_quant:
 
 
 # Règle pour l'appel de variants avec FreeBayes
-#rule call_variants:
-#    input:
-#        bam = "data/aligned/{id}.bam"
-#    output:
-#        vcf = "data/variants/{id}.vcf"
-#    params:
-#        freebayes = FREEBAYES
-#    log:
-#        "logs/freebayes_{id}.log"
-#    shell:
-#        "{params.freebayes} -f {REFERENCE_GENOME} {input.bam} > {output.vcf} 2> {log}"
-#
+rule call_variants:
+    input:
+        bam = "data/aligned/{id}.bam"
+    output:
+        vcf = "data/variants/{id}.vcf"
+    params:
+        freebayes = FREEBAYES
+    log:
+        "logs/freebayes_{id}.log"
+    shell:
+        "{params.freebayes} -f {REFERENCE_GENOME} {input.bam} > {output.vcf} 2> {log}"
+
 ## Règle pour l'annotation des variants avec OpenVar
 #rule annotate_variants:
 #    input:
