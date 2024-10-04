@@ -23,8 +23,6 @@ from pathlib import Path
 #import pandas as pd
 
 
-
-
 configfile: "../profile_local/config.yaml"
 configfile: "../config/config.json"
 
@@ -58,7 +56,7 @@ OPENVAR = "OpenVar"
 
 
 id_list = [
-    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fcicher fera cela
+    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier se fera cela
 
 ]
 
@@ -79,7 +77,7 @@ rule all:
         expand("data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),  # Val_2 pour R2
         expand("data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
         expand("data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
-        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   #freebayes
+        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
         #expand("data/quantification/{id}.tsv", id=id_list),
         #expand("data/variants/{id}_annotated.vcf", id=id_list)
 
@@ -183,7 +181,6 @@ rule star_index:
         "--sjdbOverhang 99"
         "&> {log}"
 
-# Problème thère avec le conda-libmamba-solver  (libarchive) 
 rule star_alignreads:
     """ Generates a bam file using STAR """
     input:
@@ -218,8 +215,8 @@ rule star_alignreads:
         "--outFilterMatchNminOverLread 0.3 "
         "--outFilterMultimapNmax 100 "
         "--winAnchorMultimapNmax 100 "
-        "--limitBAMsortRAM 15000000000"         #15go RAM
-        "--alignEndsProtrude 5 ConcordantPair "
+        "--limitBAMsortRAM 15000000000 " ## 15 Go RAM
+        "--outTmpDir /home/anthony/temp "  #### Causera des problemes
         "&> {log}"
 
 
@@ -340,7 +337,7 @@ rule call_variants:
     output:
         vcf = "data/variants/{id}.vcf"
     params:
-        freebayes = FREEBAYES
+        freebayes = FREEBAYES   # a corriger
     log:
         "logs/freebayes_{id}.log"
     shell:
