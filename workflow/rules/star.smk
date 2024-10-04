@@ -2,7 +2,7 @@ rule star_index:
     """ Generates the genome index for STAR """
     input:
         fasta = rules.download_human_genome.output.genome,
-        gtf = config['download']['human_gtf']
+        gtf = config['download']['human_gtf']        #GRCh38.p14 reference
     output:
         chrNameLength = config['path']['chrNameLength']
     params:
@@ -10,9 +10,9 @@ rule star_index:
     log:
         "logs/STAR/index.log"
     conda:
-        "../envs/star.yml"
+        "envs/star.yml"
     threads:
-        32
+        8
     shell:
         "mkdir -p {params.dir} && "
         "STAR --runThreadN {threads} "
@@ -23,8 +23,7 @@ rule star_index:
         "--sjdbOverhang 99"
         "&> {log}"
 
-
-rule star_alignReads:
+rule star_alignreads:
     """ Generates a bam file using STAR """
     input:
         idx = rules.star_index.output,
@@ -39,9 +38,9 @@ rule star_alignReads:
     log:
         "logs/STAR/{id}.log"
     threads:
-        32
+        8
     conda:
-        "../envs/star.yml"
+        "envs/star.yml"
     shell:
         "STAR --runMode alignReads "
         "--genomeDir {params.index} "
@@ -58,9 +57,35 @@ rule star_alignReads:
         "--outFilterMatchNminOverLread 0.3 "
         "--outFilterMultimapNmax 100 "
         "--winAnchorMultimapNmax 100 "
-        "--limitBAMsortRAM 600000000000"
-        "--alignEndsProtrude 5 ConcordantPair "
+        "--limitBAMsortRAM 15000000000 " ## 15 Go RAM
+        "--outTmpDir /home/anthony/temp "  #### Causera des problemes
         "&> {log}"
+
+
+############# Star se fera dans une config a part 
+# Règle pour l'alignement avec STAR
+#rule align_reads:
+#    input:
+#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
+#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz"
+#    output:
+#        bam = "data/aligned/{id}.bam"
+#    params:
+#        star = STAR,
+#        genome = REFERENCE_GENOME
+#    log:
+#        "logs/star_{id}.log"
+#    threads: 8
+#    shell:
+#        "{params.star} --runThreadN {threads} --genomeDir {params.genome} "
+#        "--readFilesIn {input.fq1} {input.fq2} "
+#        "--outFileNamePrefix data/aligned/{wildcards.id} "
+#        "--outSAMtype BAM SortedByCoordinate "
+#        "--outFilterMismatchNmax 5 --alignSJoverhangMin 10 "
+#        "--alignMatesGapMax 200000 --alignIntronMax 200000 "
+#        "--alignSJstitchMismatchNmax '5-1 5 5' "
+#        "--outSAMprimaryFlag AllBestScore &> {log}"
+#
 
 
 ############# Star se fera dans une config a part 
