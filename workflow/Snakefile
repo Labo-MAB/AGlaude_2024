@@ -1,4 +1,4 @@
-fastq_dir = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/" #ordi
+#fastq_dir = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/" #ordi
 # Version 0.2.0 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> Ajout  : procedures de manipulation ARNseq data avec les rules
 # >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
@@ -47,12 +47,11 @@ for file in files:
 
 
 # Chemins des outils/fichiers (mais servent a rien)
-TRIM_GALORE = "trim_galore"
-STAR = "STAR"
+
 KALLISTO = "kallisto"
 FREEBAYES = "freebayes"
 OPENVAR = "OpenVar"
-
+TRANSCRIPT_DB = "transcript_db"  
 
 
 id_list = [
@@ -79,7 +78,7 @@ rule all:
         expand("data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
         #expand("data/quantification/{id}.tsv", id=id_list),
-        #expand("data/variants/{id}_annotated.vcf", id=id_list)
+        expand("data/variants/{id}_annotated.vcf", id=id_list)
 
 rule download_genome:
     input:
@@ -181,7 +180,7 @@ rule star_index:
         "--sjdbOverhang 99"
         "&> {log}"
 
-rule star_alignreads:
+rule star_alignreads:   # star le plus à jour et non  2.7.3a
     """ Generates a bam file using STAR """
     input:
         idx = rules.star_index.output,
@@ -200,27 +199,36 @@ rule star_alignreads:
     conda:
         "envs/star.yml"
     shell:
-        "STAR --runMode alignReads "
-        "--genomeDir {params.index} "
-        "--readFilesIn {input.fq1} {input.fq2}  "
-        "--runThreadN {threads} "
-        "--readFilesCommand zcat "
-        "--outReadsUnmapped Fastx "
-        "--outFilterType BySJout "
-        "--outStd Log "
-        "--outSAMunmapped None "
-        "--outSAMtype BAM SortedByCoordinate "
-        "--outFileNamePrefix {params.output_dir} "
-        "--outFilterScoreMinOverLread 0.3 "
-        "--outFilterMatchNminOverLread 0.3 "
-        "--outFilterMultimapNmax 100 "
-        "--winAnchorMultimapNmax 100 "
-        "--limitBAMsortRAM 15000000000 " ## 15 Go RAM
-        "--outTmpDir /home/anthony/temp "  #### Causera des problemes
-        "&> {log}"
+        """
+        STAR --runMode alignReads \
+        --genomeDir {params.index} \
+        --readFilesIn {input.fq1} {input.fq2} \
+        --runThreadN {threads} \
+        --readFilesCommand zcat \
+        --outReadsUnmapped Fastx \
+        --outFilterType BySJout \
+        --outStd Log \
+        --outSAMunmapped None \
+        --outSAMtype BAM SortedByCoordinate \
+        --outFileNamePrefix {params.output_dir} \
+        --outFilterScoreMinOverLread 0.3 \
+        --outFilterMatchNminOverLread 0.3 \
+        --outFilterMultimapNmax 100 \
+        --winAnchorMultimapNmax 100 \
+        --limitBAMsortRAM 15000000000 \
+        --outTmpDir /home/anthony/temp \
+        --outSAMprimaryFlag AllBestScore \
+        --outFilterMismatchNmax 5 \
+        --alignSJoverhangMin 10 \
+        --alignMatesGapMax 200000 \
+        --alignIntronMax 200000 \
+        --alignSJstitchMismatchNmax "5-1 5 5" \
+        --bamRemoveDuplicatesType UniqueIdenticalNotMulti \
+        &> {log}
+        """
 
 
-# Règle pour la quantification des transcrits avec Kallisto
+# Règle pour la quantification des transcrits avec Kallisto  **** A corriger, les paths && les dependances entre chaque rules)
 rule build_transcriptome:
     input:
         genome = rules.download_human_genome.output.genome,
@@ -228,13 +236,13 @@ rule build_transcriptome:
     output:
         config["path"]["transcriptome"]
     conda:
-        "../envs/gffread.yml"
+        "/envs/gffread.yml"
     message:
         "Build a reference transcriptome using gffread."
     log:
         "logs/build_transcriptome/build_transcriptome.log"
     shell:
-        "gffread {input.gtf} -g {input.genome} -w {output}"
+        "gffread {input.gtf} -g {input.genome} -w {output}"  
 
 
 rule kallisto_index:
@@ -245,7 +253,7 @@ rule kallisto_index:
     params:
         8
     conda:
-        "../envs/kallisto.yml"
+        "/envs/kallisto.yml"
     log:
         "logs/kallisto/index.log"
     message:
@@ -271,7 +279,7 @@ rule kallisto_quant:
     threads:
         1
     conda:
-        "../envs/kallisto.yml"
+        "/envs/kallisto.yml"
     log:
         "logs/kallisto/{id}.log"
     message:
@@ -293,11 +301,11 @@ rule tx2gene:
     output:
         tsv = "data/references/tx2gene.tsv"
     conda:
-        "../envs/python.yml"
+        "/envs/python.yml"
     message:
         "Convert transcript IDs to gene IDs."
     script:
-        "../scripts/tx2gene.py"
+        "/scripts/tx2gene.py"
 
 
 rule filter_gtf_pc_genes:
@@ -321,19 +329,19 @@ rule merge_kallisto_quant:
     output:
         tpm = "results/dge/kallisto/tpm.tsv"
     conda:
-        "../envs/python.yml"
+        "/envs/python.yml"
     log:
         "logs/kallisto/merge_kallisto_quant.log"
     message:
         "Merge kallisto quantification results into one dataframe for further analysis."
     script:
-        "../scripts/merge_kallisto_quant.py"
+        "/scripts/merge_kallisto_quant.py"
 
 
 # Règle pour l'appel de variants avec FreeBayes
 rule call_variants:
     input:
-        bam = "data/aligned/{id}.bam"
+        bam = rules.star_alignreads.output.bam  
     output:
         vcf = "data/variants/{id}.vcf"
     params:
@@ -343,41 +351,16 @@ rule call_variants:
     shell:
         "{params.freebayes} -f {REFERENCE_GENOME} {input.bam} > {output.vcf} 2> {log}"
 
-## Règle pour l'annotation des variants avec OpenVar
-#rule annotate_variants:
-#    input:
-#        vcf = "data/variants/{id}.vcf",
-#        transcript_db = TRANSCRIPT_DB
-#    output:
-#        annotated_vcf = "data/variants/{id}_annotated.vcf"
-#    params:
-#        openvar = OPENVAR
-#    log:
-#        "logs/openvar_{id}.log"
-#    shell:
-#        "{params.openvar} -i {input.vcf} -t {input.transcript_db} -o {output.annotated_vcf} &> {log}"
-#
-
-
-
-
-
-###########fastp
-#    params:
-#        options = ["--qualified_quality_phred 30", "--length_required 20",
-#                "--cut_window_size 1", "--cut_mean_quality 30", "--cut_front",
-#                "--cut_tail"]
-#    log:
-#        "logs/fastp/{id}.log"
-#    conda:
-#        "envs/fastqc.yml"
-#    shell:
-#        "fastp -i {input.fq1} -I {input.fq2} "
-#        "-o {output.fastq1} -O {output.fastq2} "
-#        "--unpaired1 {output.unpaired_fastq1} "
-#        "--unpaired2 {output.unpaired_fastq2} "
-#        "--thread {threads} "
-#        "-h {output.html_report} "
-#        "-j {output.json_report} "
-#        "{params.options} "
-#        "&> {log}"
+# Règle pour l'annotation des variants avec OpenVar
+rule annotate_variants:
+    input:
+        vcf = rules.call_variants.output.vcf,
+#        transcript_db = TRANSCRIPT_DB # sert a rien 
+    output:
+        annotated_vcf = "data/variants/{id}_annotated.vcf"
+    params:
+        openvar = OPENVAR # ??
+    log:
+        "logs/openvar_{id}.log"
+    shell:
+        "{params.openvar} -i {input.vcf} -t {input.transcript_db} -o {output.annotated_vcf} &> {log}"
