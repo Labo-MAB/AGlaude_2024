@@ -1,3 +1,4 @@
+# Règle pour la quantification des transcrits avec Kallisto  **** A corriger, les paths && les dependances entre chaque rules)
 rule build_transcriptome:
     input:
         genome = rules.download_human_genome.output.genome,
@@ -5,13 +6,13 @@ rule build_transcriptome:
     output:
         config["path"]["transcriptome"]
     conda:
-        "../envs/gffread.yml"
+        "/envs/gffread.yml"
     message:
         "Build a reference transcriptome using gffread."
     log:
         "logs/build_transcriptome/build_transcriptome.log"
     shell:
-        "gffread {input.gtf} -g {input.genome} -w {output}"
+        "gffread {input.gtf} -g {input.genome} -w {output}"  
 
 
 rule kallisto_index:
@@ -20,9 +21,9 @@ rule kallisto_index:
     output:
         "data/references/kallisto.idx"
     params:
-        31
+        8
     conda:
-        "../envs/kallisto.yml"
+        "/envs/kallisto.yml"
     log:
         "logs/kallisto/index.log"
     message:
@@ -38,8 +39,8 @@ rule kallisto_index:
 rule kallisto_quant:
     input:
         idx = rules.kallisto_index.output,
-        fq1 = rules.fastp.output.fastq1,
-        fq2 = rules.fastp.output.fastq2
+        fq1 = rules.trim_reads.output.gal_trim1,
+        fq2 = rules.trim_reads.output.gal_trim2
     output:
         "results/dge/kallisto/{id}/abundance.tsv"
     params:
@@ -48,7 +49,7 @@ rule kallisto_quant:
     threads:
         1
     conda:
-        "../envs/kallisto.yml"
+        "/envs/kallisto.yml"
     log:
         "logs/kallisto/{id}.log"
     message:
@@ -70,11 +71,11 @@ rule tx2gene:
     output:
         tsv = "data/references/tx2gene.tsv"
     conda:
-        "../envs/python.yml"
+        "/envs/python.yml"
     message:
         "Convert transcript IDs to gene IDs."
     script:
-        "../scripts/tx2gene.py"
+        "/scripts/tx2gene.py"
 
 
 rule filter_gtf_pc_genes:
@@ -98,11 +99,10 @@ rule merge_kallisto_quant:
     output:
         tpm = "results/dge/kallisto/tpm.tsv"
     conda:
-        "../envs/python.yml"
+        "/envs/python.yml"
     log:
         "logs/kallisto/merge_kallisto_quant.log"
     message:
         "Merge kallisto quantification results into one dataframe for further analysis."
     script:
-        "../scripts/merge_kallisto_quant.py"
-
+        "/scripts/merge_kallisto_quant.py"
