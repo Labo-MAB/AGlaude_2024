@@ -1,3 +1,73 @@
+rule fastqc:
+    """Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
+    input:
+        fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
+        fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
+    output:
+        qc_fq1_out = "data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html",
+        qc_fq2_out = "data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html"
+    params:
+        out_dir = "data/qc"
+    log:
+        "logs/fastqc_{id}.log"
+    threads: 8
+    conda:
+        "envs/fastqc.yml" 
+    shell:
+        "mkdir -p {params.out_dir} && "
+        "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log}"
+
+# Règle pour le trimming avec trim_galore
+rule trim_reads:
+    input:
+        fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
+        fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
+    output:
+        gal_trim1 = "data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", # les fichiers validés par trim_galore
+        gal_trim2 = "data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  
+    threads:
+        8
+    conda:
+        "envs/trim_galore.yml"
+    log:
+        "logs/trim_{id}.log"
+    shell:
+        """
+        trim_galore --paired {input.fq1} {input.fq2} \
+        --output_dir data/trim_galore --gzip \
+        &> {log}
+        """
+
+
+rule qc_fastq:
+    """ Assess the FASTQ quality using FastQC AFTER TRIMMING"""
+    input:
+        trimm_fq1 = rules.trim_reads.output.gal_trim1,
+        trimm_fq2 = rules.trim_reads.output.gal_trim2,
+#        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired1,
+#        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired2
+    output:
+        qc_trimm_fq1_out = "data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html",
+        qc_trimm_fq2_out = "data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html"
+    params:
+        out_dir = "data/qc_trim_galore"
+    log:
+        "logs/qc_trim_galore/{id}.log"
+    threads:
+        8
+    conda:
+        "envs/fastqc.yml"
+    shell:
+        "fastqc "
+        "--outdir {params.out_dir} "
+        "--format fastq "
+        "--threads {threads} "
+        "{input.trimm_fq1} {input.trimm_fq2} "
+#        "{input.trimm_unpaired_fq1} {input.trimm_unpaired_fq2} "
+        "&> {log}"
+
+
+
 rule star_index:
     """ Generates the genome index for STAR """
     input:
@@ -62,53 +132,3 @@ rule star_alignreads:
         "&> {log}"
 
 
-############# Star se fera dans une config a part 
-# Règle pour l'alignement avec STAR
-#rule align_reads:
-#    input:
-#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
-#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz"
-#    output:
-#        bam = "data/aligned/{id}.bam"
-#    params:
-#        star = STAR,
-#        genome = REFERENCE_GENOME
-#    log:
-#        "logs/star_{id}.log"
-#    threads: 8
-#    shell:
-#        "{params.star} --runThreadN {threads} --genomeDir {params.genome} "
-#        "--readFilesIn {input.fq1} {input.fq2} "
-#        "--outFileNamePrefix data/aligned/{wildcards.id} "
-#        "--outSAMtype BAM SortedByCoordinate "
-#        "--outFilterMismatchNmax 5 --alignSJoverhangMin 10 "
-#        "--alignMatesGapMax 200000 --alignIntronMax 200000 "
-#        "--alignSJstitchMismatchNmax '5-1 5 5' "
-#        "--outSAMprimaryFlag AllBestScore &> {log}"
-#
-
-
-############# Star se fera dans une config a part 
-# Règle pour l'alignement avec STAR
-#rule align_reads:
-#    input:
-#        fq1 = "data/trim_galore/{id}_1_trimmed.fastq.gz",
-#        fq2 = "data/trim_galore/{id}_2_trimmed.fastq.gz"
-#    output:
-#        bam = "data/aligned/{id}.bam"
-#    params:
-#        star = STAR,
-#        genome = REFERENCE_GENOME
-#    log:
-#        "logs/star_{id}.log"
-#    threads: 8
-#    shell:
-#        "{params.star} --runThreadN {threads} --genomeDir {params.genome} "
-#        "--readFilesIn {input.fq1} {input.fq2} "
-#        "--outFileNamePrefix data/aligned/{wildcards.id} "
-#        "--outSAMtype BAM SortedByCoordinate "
-#        "--outFilterMismatchNmax 5 --alignSJoverhangMin 10 "
-#        "--alignMatesGapMax 200000 --alignIntronMax 200000 "
-#        "--alignSJstitchMismatchNmax '5-1 5 5' "
-#        "--outSAMprimaryFlag AllBestScore &> {log}"
-#
