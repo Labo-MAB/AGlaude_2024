@@ -1,6 +1,12 @@
+#Alignement des séquences ADNc (proviennent ARN-seq) sur le génome humain, puis comptage brut des lectures alignées 
+import os
+from pathlib import Path
+
 rule fastqc:
     """Assess the FASTQ quality using FastQC BEFORE TRIMMING"""
     input:
+#        fq1 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+#        fq2 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
         fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
         fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
     output:
@@ -12,7 +18,7 @@ rule fastqc:
         "logs/fastqc_{id}.log"
     threads: 8
     conda:
-        "envs/fastqc.yml" 
+        "../envs/fastqc.yml" 
     shell:
         "mkdir -p {params.out_dir} && "
         "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log}"
@@ -20,6 +26,8 @@ rule fastqc:
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
+#        fq1 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+#        fq2 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
         fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
         fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
     output:
@@ -28,7 +36,7 @@ rule trim_reads:
     threads:
         8
     conda:
-        "envs/trim_galore.yml"
+        "../envs/trim_galore.yml"
     log:
         "logs/trim_{id}.log"
     shell:
@@ -56,7 +64,7 @@ rule qc_fastq:
     threads:
         8
     conda:
-        "envs/fastqc.yml"
+        "../envs/fastqc.yml"
     shell:
         "fastqc "
         "--outdir {params.out_dir} "
@@ -80,7 +88,7 @@ rule star_index:
     log:
         "logs/STAR/index.log"
     conda:
-        "envs/star.yml"
+        "../envs/star.yml"
     threads:
         8
     shell:
@@ -101,7 +109,7 @@ rule star_alignreads:
         fq2 = rules.trim_reads.output.gal_trim2
     output:
         bam = "results/STAR/{id}/Aligned.sortedByCoord.out.bam",
-        bam_logs = "results/STAR/{id}/Log.final.out"
+        bam_logs = "results/STAR/{id}/Log.final.out"  #(temp) 
     params:
         index = config['path']['star_index'],
         output_dir = "results/STAR/{id}/"
@@ -110,25 +118,26 @@ rule star_alignreads:
     threads:
         8
     conda:
-        "envs/star.yml"
+        "../envs/star.yml"
     shell:
-        "STAR --runMode alignReads "
-        "--genomeDir {params.index} "
-        "--readFilesIn {input.fq1} {input.fq2}  "
-        "--runThreadN {threads} "
-        "--readFilesCommand zcat "
-        "--outReadsUnmapped Fastx "
-        "--outFilterType BySJout "
-        "--outStd Log "
-        "--outSAMunmapped None "
-        "--outSAMtype BAM SortedByCoordinate "
-        "--outFileNamePrefix {params.output_dir} "
-        "--outFilterScoreMinOverLread 0.3 "
-        "--outFilterMatchNminOverLread 0.3 "
-        "--outFilterMultimapNmax 100 "
-        "--winAnchorMultimapNmax 100 "
-        "--limitBAMsortRAM 15000000000 " ## 15 Go RAM
-        "--outTmpDir /home/anthony/temp "  #### Causera des problemes
-        "&> {log}"
-
+        """
+        STAR --runMode alignReads \
+            --genomeDir data/references/star_index/ \
+            --readFilesIn {input.fq1} {input.fq2} \
+            --runThreadN {threads} \
+            --readFilesCommand zcat \
+            --outReadsUnmapped Fastx \
+            --outFilterType BySJout \
+            --outStd Log \
+            --outSAMunmapped None \
+            --outSAMtype BAM SortedByCoordinate \
+            --outFileNamePrefix {params.output_dir} \
+            --outFilterScoreMinOverLread 0.3 \
+            --outFilterMatchNminOverLread 0.3 \
+            --outFilterMultimapNmax 100 \
+            --winAnchorMultimapNmax 100 \
+            --limitBAMsortRAM 15000000000 \
+            --outTmpDir /home/anthony/temp \  
+            &> {log}
+        """
 
