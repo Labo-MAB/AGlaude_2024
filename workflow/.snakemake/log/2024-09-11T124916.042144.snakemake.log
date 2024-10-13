@@ -1,7 +1,0 @@
-host: DESKTOP-LLO24HI
-Building DAG of jobs...
-MissingInputException in rule all in file C:\Users\Anthony\OneDrive\Documents\udes\3- Automne 2024\BCM624 8 - credit\breast_cancer\workflow\Snakefile, line 57:
-Missing input files for rule all:
-    affected files:
-        data/fastp/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_2_trimmed.fastq.gz
-        data/fastp/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_1_trimmed.fastq.gz
