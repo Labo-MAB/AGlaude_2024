@@ -3,17 +3,19 @@ rule call_variants:
         bam = rules.star_alignreads.output.bam,
         genome = rules.download_human_genome.output.genome
     output:
-        vcf = "data/variants/{id}.vcf"
+        vcf = "results/variants/{id}.vcf"
     params:
-        min_alternate_count = 5,  
+        out_dir = "results/variants",
+        min_alternate_count = 0.5,  
         min_coverage = 10
     conda:
-        "/home/anthony/miniconda3/envs/freebayes"
-#        "../envs/freebaye.yml"
+        #"/home/anthony/miniconda3/envs/freebayes"
+        "../envs/freebaye.yml"
     log:
         "logs/freebayes_{id}.log"
     shell: 
         """
+        mkdir -p {params.out_dir} &&
         freebayes -f {input.genome} --min-alternate-fraction {params.min_alternate_count} 
         --min-coverage {params.min_coverage} {input.bam} > {output.vcf} 2> {log}
         """

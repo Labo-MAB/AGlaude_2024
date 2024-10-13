@@ -1,3 +1,4 @@
+name: kallisto_env
 channels:
   - bioconda
   - conda-forge

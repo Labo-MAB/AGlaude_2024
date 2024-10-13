@@ -1,3 +1,4 @@
+name: python_env
 channels:
   - default
   - conda-forge

@@ -18,6 +18,10 @@
 configfile: "../profile_local/config.yaml"
 configfile: "../config/config.json"
 
+id_list = [
+    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier fera cela
+
+]
 
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
@@ -25,10 +29,6 @@ include: "rules/kallisto.smk"
 include: "rules/variants.smk"
 
 
-id_list = [
-    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier fera cela
-
-]
 rule all:
     input:
         expand("data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),

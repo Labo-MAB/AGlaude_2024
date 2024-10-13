@@ -1,4 +1,5 @@
+name: fastqc_env
 channels:
   - bioconda
 dependencies:
-  - fastqc =0.11.8
+  - fastqc=0.11.8

@@ -1,3 +1,4 @@
+name: freebaye_env
 channels:
   - bioconda
   - conda-forge

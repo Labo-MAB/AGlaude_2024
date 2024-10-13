@@ -33,6 +33,8 @@ rule trim_reads:
     output:
         gal_trim1 = "data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", # les fichiers validés par trim_galore
         gal_trim2 = "data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  
+    params:
+        out_dir = "data/trim_galore"
     threads:
         8
     conda:
@@ -41,6 +43,7 @@ rule trim_reads:
         "logs/trim_{id}.log"
     shell:
         """
+        mkdir -p {params.out_dir} \
         trim_galore --paired {input.fq1} {input.fq2} \
         --output_dir data/trim_galore --gzip \
         &> {log}
@@ -66,21 +69,23 @@ rule qc_fastq:
     conda:
         "../envs/fastqc.yml"
     shell:
-        "fastqc "
-        "--outdir {params.out_dir} "
-        "--format fastq "
-        "--threads {threads} "
-        "{input.trimm_fq1} {input.trimm_fq2} "
-#        "{input.trimm_unpaired_fq1} {input.trimm_unpaired_fq2} "
-        "&> {log}"
-
+        """
+        mkdir -p {params.out_dir} &&
+        fastqc \
+            --outdir {params.out_dir} \
+            --format fastq \
+            --threads {threads} \
+            {input.trimm_fq1} {input.trimm_fq2} \
+            &> {log}
+        """
 
 
 rule star_index:
     """ Generates the genome index for STAR """
     input:
         fasta = rules.download_human_genome.output.genome,
-        gtf = config['download']['human_gtf']        #GRCh38.p14 reference
+        #gtf = config['download']['human_gtf']        #GRCh38.p14 reference
+        gtf = rules.download_human_gtf.output.gtf
     output:
         chrNameLength = config['path']['chrNameLength']
     params:
@@ -137,7 +142,7 @@ rule star_alignreads:
             --outFilterMultimapNmax 100 \
             --winAnchorMultimapNmax 100 \
             --limitBAMsortRAM 15000000000 \
-            --outTmpDir /home/anthony/temp \  
+            --outTmpDir /home/antho/temp \ 
             &> {log}
         """
 

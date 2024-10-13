@@ -1,3 +1,4 @@
+name: gffread_env
 channels:
   - bioconda
 dependencies:
