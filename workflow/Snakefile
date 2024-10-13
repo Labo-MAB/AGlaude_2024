@@ -13,6 +13,7 @@
 # puis un autre controle qualité pour vérifier si trim-galore n'a pas trop tout détruit
 #ce qu'il faut, c'est prendre les transcrits et nvx transcrits , creer un nouveau fasta manuellement combinants les variants qui seront trouvés et les renommés #on ne veut pas savoir quil y a le cancer, on le sait deja, mais 
 #quel sont les changements proteiques et quel est limpact 
+# snakemake --profile ../profile_local/ --latency-wait 3
 
 
 configfile: "../profile_local/config.yaml"
