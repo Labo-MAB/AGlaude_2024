@@ -2,11 +2,11 @@
 rule build_transcriptome:
     input:
         genome = rules.download_human_genome.output.genome,
-        gtf = config['download']['human_gtf']   
+        gtf = rules.download_human_gtf.output.gtf
     output:
         config["path"]["transcriptome"]
     conda:
-        "/envs/gffread.yml"
+        "../envs/gffread.yml"
     message:
         "Build a reference transcriptome using gffread."
     log:
@@ -20,10 +20,8 @@ rule kallisto_index:
         rules.build_transcriptome.output
     output:
         "data/references/kallisto.idx"
-    params:
-        8
     conda:
-        "/envs/kallisto.yml"
+        "../envs/kallisto.yml"
     log:
         "logs/kallisto/index.log"
     message:
@@ -31,7 +29,6 @@ rule kallisto_index:
     shell:
         "kallisto index "
         "--index={output} "
-        "--kmer-size={params} "
         "{input} "
         "&> {log}"
 
@@ -49,7 +46,7 @@ rule kallisto_quant:
     threads:
         1
     conda:
-        "/envs/kallisto.yml"
+        "../envs/kallisto.yml"
     log:
         "logs/kallisto/{id}.log"
     message:
@@ -67,20 +64,20 @@ rule kallisto_quant:
 
 rule tx2gene:
     input:
-        gtf = config['download']['human_gtf']
+        gtf = rules.download_human_gtf.output.gtf
     output:
         tsv = "data/references/tx2gene.tsv"
     conda:
-        "/envs/python.yml"
+        "../envs/python.yml"
     message:
         "Convert transcript IDs to gene IDs."
     script:
-        "/scripts/tx2gene.py"
+        "../scripts/tx2gene.py"
 
 
 rule filter_gtf_pc_genes:
     input:
-        gtf = config['download']['human_gtf']
+        gtf = rules.download_human_gtf.output.gtf
     output:
         pc_gtf = "data/references/gtf/Homo_sapiens.GRCh38.110_snoRNAs_tRNAs.protein_coding.gtf"
     log:
@@ -97,12 +94,12 @@ rule merge_kallisto_quant:
         tx2gene = rules.tx2gene.output.tsv,
         gtf = rules.filter_gtf_pc_genes.output.pc_gtf
     output:
-        tpm = "results/dge/kallisto/tpm.tsv"
+        tpm = "results/dge/kallisto/{id}_tpm.tsv"
     conda:
-        "/envs/python.yml"
+        "../envs/python.yml"
     log:
-        "logs/kallisto/merge_kallisto_quant.log"
+        "logs/kallisto/merge_kallisto_quant_{id}.log"  # Ajout du joker {id}
     message:
         "Merge kallisto quantification results into one dataframe for further analysis."
     script:
-        "/scripts/merge_kallisto_quant.py"
+        "../scripts/merge_kallisto_quant.py"

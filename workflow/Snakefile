@@ -39,7 +39,8 @@ rule all:
         expand("data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
         expand("data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
-        expand("data/variants/{id}_filtred.vcf", id=id_list)
+        expand("results/variants/{id}_filtred.vcf", id=id_list),
+        expand("results/dge/kallisto/{id}_tpm.tsv", id=id_list)
 
 rule download_genome:
     input:

@@ -145,4 +145,3 @@ rule star_alignreads:
             --outTmpDir /home/antho/temp \ 
             &> {log}
         """
-

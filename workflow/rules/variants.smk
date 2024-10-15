@@ -6,26 +6,29 @@ rule call_variants:
         vcf = "results/variants/{id}.vcf"
     params:
         out_dir = "results/variants",
-        min_alternate_count = 0.5,  
+        min_alternate_count = 1,  # Remplacez 0.5 par un entier
         min_coverage = 10
     conda:
-        #"/home/anthony/miniconda3/envs/freebayes"
         "../envs/freebaye.yml"
     log:
         "logs/freebayes_{id}.log"
+    threads: 8  # Si vous souhaitez utiliser plusieurs threads
     shell: 
         """
-        mkdir -p {params.out_dir} &&
-        freebayes -f {input.genome} --min-alternate-fraction {params.min_alternate_count} 
-        --min-coverage {params.min_coverage} {input.bam} > {output.vcf} 2> {log}
+        mkdir -p {params.out_dir} && \
+        freebayes -f {input.genome} \
+            --min-alternate-fraction {params.min_alternate_count} \
+            --min-coverage {params.min_coverage} \
+            {input.bam} \
+            > {output.vcf} \
+            2> {log}
         """
-
 
 rule filter_variants:
     input:
         vcf = rules.call_variants.output.vcf
     output:
-        vcf_filtered = "data/variants/{id}_filtred.vcf"
+        vcf_filtered = "results/variants/{id}_filtred.vcf"
     conda:
         "../envs/python.yml"  # Environnement contenant Python
     log:
