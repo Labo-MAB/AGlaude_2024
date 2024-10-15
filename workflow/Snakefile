@@ -2,7 +2,7 @@
 # >>> Explication de l'outil 
 # 1) star.smk permet de déterminer le QC , trimming et QC du trimming. Puis, prend genome reference du download_genome.smk pour creer lindex de star
 # >>> Index star  >>> index du genome de reference (ENSEMBL) pour eviter de lire le genome brut 
-# >>> Star_alignement >>> aligne les FASTQ du trimming sur le genome de reference (compare sequences de lectuve avec celle du genome pour trouver correspondances optimales) >>> output = .Bam
+# >>> Star_alignement >>> aligne les FASTQ du trimming sur le genome de reference (compare sequences de lecture avec celle du genome pour trouver correspondances optimales) >>> output = .Bam
 # 2) variants.smk Declaration des potentiels variants en utilisant les fichiers .Bam (star_alignment)
 # >>> Call_variants >>> Appel de FreeBayes pour detecter des SNPs et des Indels >>> output = .VCF
 # >>> filter_variants >>> Il sert a verifier la qualité du .VCF (Call_variants) >>> Il prend un script et verifie le la col. 6 du .VCF le seuil QC min est 20
@@ -17,7 +17,8 @@
 # >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
 # >>> À Ajouter : Changer le lien du génome de reference
 # >>> Fomonet utilisera build_transcriptome.output.fasta et la liste transcrits par kallisto_quant.output donc
-# >>> bf ref + ref.mutee sera utiliser avec la liste de variants
+# >>> bd ref + ref.mutee sera utiliser avec la liste de variants
+# >>> BD trad. in silico : ORFs  ATG >30codons
 
 #ce qu'il faut, c'est prendre les transcrits et nvx transcrits , creer un nouveau fasta manuellement combinants les variants qui seront trouvés et les renommés #on ne veut pas savoir quil y a le cancer, on le sait deja, mais 
 #quel sont les changements proteiques et quel est limpact 
@@ -27,10 +28,25 @@
 configfile: "../profile_local/config.yaml"
 configfile: "../config/config.json"
 
-id_list = [
-    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier fera cela
+#171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R2_001.220405.A00516.AHVHTNDSX2.fastq
+directory = os.path.join(config["path"]["fastq_dir"])
+file_dict = {}
 
-]
+for filename in os.listdir(directory):
+    if filename.endswith(".fastq"):
+        base_id = filename.rsplit('_', 2)[0]  # Enlève les deux derniers segments
+        lane = filename.split('_')[-2]  # Extrait L00x (avant R1/R2)
+        key = f"{base_id}_{lane}" 
+        if key not in file_dict:
+            file_dict[key] = []
+        file_dict[key].append(filename)
+
+id_list = list(file_dict.keys())
+
+#id_list = [
+#    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier fera cela
+#
+#]
 
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
