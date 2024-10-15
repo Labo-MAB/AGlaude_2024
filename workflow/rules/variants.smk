@@ -6,13 +6,13 @@ rule call_variants:
         vcf = "results/variants/{id}.vcf"
     params:
         out_dir = "results/variants",
-        min_alternate_count = 1,  # Remplacez 0.5 par un entier
+        min_alternate_count = 1,  
         min_coverage = 10
     conda:
         "../envs/freebaye.yml"
     log:
         "logs/freebayes_{id}.log"
-    threads: 8  # Si vous souhaitez utiliser plusieurs threads
+    threads: 8  
     shell: 
         """
         mkdir -p {params.out_dir} && \

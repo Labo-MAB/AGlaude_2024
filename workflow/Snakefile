@@ -1,16 +1,20 @@
-#fastq_dir = "/mnt/c/Users/Anthony/Documents/breast_cancer/data/" #ordi
-# Version 0.2.0 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
-# >>> Ajout  : procedures de manipulation ARNseq data avec les rules
+# Version 15/10 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
-# Chaque rule est a corriger / rule all a ajouter et rule wildcards 
-# FastQc -> Controle qualité sur les datas
-# Trim_Galore -> Trimming des FastQc 
-# FastQc -> Vérification que le trimming s'est bien déroulé
-# Star -> alignement sur génome de reference  *** 
-#merge bam samtool/ module java
-###USAGE example(explication/détails des outils): 
-#18/09  pipeline fourni la fiche de controle qualité.html mais aussi le zip détaillé ; TRIM-GALORE DONNE UN FICHIER .GZ +TEXT EXPLICATIF, 
-# puis un autre controle qualité pour vérifier si trim-galore n'a pas trop tout détruit
+# >>> À Ajouter : Changer le lien du génome de reference
+# >>> Explication de l'outil 
+# 1) fichier star.smk permet de déterminer le QC , trimming et QC du trimming. Puis, prend genome reference du download_genome.smk pour creer lindex de star
+# >>> Index star  >>> index du genome de reference (ENSEMBL) pour eviter de lire le genome brut 
+# >>> Star_alignement >>> aligne les FASTQ du trimming sur le genome de reference (compare sequences de lectuve avec celle du genome pour trouver correspondances optimales) >>> output = .Bam
+# 2) Declaration des potentiels variants en utilisant les fichiers .Bam (star_alignment)
+# >>> Call_variants >>> Appel de FreeBayes pour detecter des SNPs et des Indels >>> output = .VCF
+# >>> filter_variants >>> Il sert a verifier la qualité du .VCF (Call_variants) >>> Il prend un script et verifie le la col. 6 du .VCF le seuil QC min est 20
+# 3) Declaration des transcrits 
+# >>> build_transcriptome >>> sert a former un transcriptome avec genome.fasta et fichier annotation genomique.gtf >>> transcriptome construit
+# >>> kallisto_index >>> Cree un index avec le transcriptome.fasta (build_transcriptome) >>> .fasta
+# >>> kallisto_quant >>> Donne l'abondance en Effectuant une pseudo-alignement avec index (kalisto_quant).fasta et les trimmings >>> output  = abundance.tsv
+# >>> tx2gene >>> converti les transcrits en gènes avec script python
+# >>> filter_gtf_pc_genes >>> extraits les gènes codants pour des protéines avec fichier d'annotation.gtf >>> output = .gtf fitlré contenant les gènes codants pour proteines
+# >>> merge_kallisto_quant >>> combine les résultats de quantifications de kallisto en 1 df
 #ce qu'il faut, c'est prendre les transcrits et nvx transcrits , creer un nouveau fasta manuellement combinants les variants qui seront trouvés et les renommés #on ne veut pas savoir quil y a le cancer, on le sait deja, mais 
 #quel sont les changements proteiques et quel est limpact 
 # snakemake --profile ../profile_local/ --latency-wait 3
