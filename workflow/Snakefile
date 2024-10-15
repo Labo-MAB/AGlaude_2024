@@ -1,6 +1,4 @@
 # Version 15/10 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
-# >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
-# >>> À Ajouter : Changer le lien du génome de reference
 # >>> Explication de l'outil 
 # 1) star.smk permet de déterminer le QC , trimming et QC du trimming. Puis, prend genome reference du download_genome.smk pour creer lindex de star
 # >>> Index star  >>> index du genome de reference (ENSEMBL) pour eviter de lire le genome brut 
@@ -15,6 +13,11 @@
 # >>> tx2gene >>> converti les transcrits en gènes avec script python
 # >>> filter_gtf_pc_genes >>> extraits les gènes codants pour des protéines avec fichier d'annotation.gtf >>> output = .gtf fitlré contenant les gènes codants pour proteines
 # >>> merge_kallisto_quant >>> combine les résultats de quantifications de kallisto en 1 df
+
+# >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
+# >>> À Ajouter : Changer le lien du génome de reference
+# >>> Fomonet utilisera build_transcriptome.output.fasta et la liste transcrits par kallisto_quant.output donc
+# >>> bf ref + ref.mutee sera utiliser avec la liste de variants
 
 #ce qu'il faut, c'est prendre les transcrits et nvx transcrits , creer un nouveau fasta manuellement combinants les variants qui seront trouvés et les renommés #on ne veut pas savoir quil y a le cancer, on le sait deja, mais 
 #quel sont les changements proteiques et quel est limpact 
