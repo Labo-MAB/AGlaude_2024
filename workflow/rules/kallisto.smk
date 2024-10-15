@@ -61,8 +61,8 @@ rule kallisto_quant:
         "{input.fq1} {input.fq2} "
         "&> {log}"
 
-
-rule tx2gene:
+# etape non crucial pour le travail, DGE ne serait pas important, mais si le temps le permet ...
+rule tx2gene:  
     input:
         gtf = rules.download_human_gtf.output.gtf
     output:
@@ -98,7 +98,7 @@ rule merge_kallisto_quant:
     conda:
         "../envs/python.yml"
     log:
-        "logs/kallisto/merge_kallisto_quant_{id}.log"  # Ajout du joker {id}
+        "logs/kallisto/merge_kallisto_quant_{id}.log" 
     message:
         "Merge kallisto quantification results into one dataframe for further analysis."
     script:
