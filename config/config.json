@@ -1,7 +1,7 @@
 {
   "path": {
     "fastq": "data/references/fastq/",
-    "fastq_dir": "/mnt/c/Users/Anthony/Documents/breast_cancer/data/",
+    "fastq_dir": "/mnt/c/Users/Antho/Documents/breast_cancer/data/",
     "REFERENCE_GENOME": "reference/GRCh38.p14.fasta",
     "chrNameLength": "data/references/star_index/chrNameLength.txt",
     "star_index": "data/references/star_index/",

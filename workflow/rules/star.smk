@@ -10,8 +10,8 @@ rule fastqc:
         fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
         fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
     output:
-        qc_fq1_out = "data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html",
-        qc_fq2_out = "data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html"
+        qc_fq1_out = "data/qc/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html",
+        qc_fq2_out = "data/qc/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html"
     params:
         out_dir = "data/qc"
     log:
@@ -31,8 +31,8 @@ rule trim_reads:
         fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
         fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
     output:
-        gal_trim1 = "data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", # les fichiers validés par trim_galore
-        gal_trim2 = "data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  
+        gal_trim1 = "data/trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", # les fichiers validés par trim_galore
+        gal_trim2 = "data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  
     params:
         out_dir = "data/trim_galore"
     threads:
@@ -58,8 +58,8 @@ rule qc_fastq:
 #        trimm_unpaired_fq1 = rules.trim_reads.output.unpaired1,
 #        trimm_unpaired_fq2 = rules.trim_reads.output.unpaired2
     output:
-        qc_trimm_fq1_out = "data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html",
-        qc_trimm_fq2_out = "data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html"
+        qc_trimm_fq1_out = "data/qc_trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html",
+        qc_trimm_fq2_out = "data/qc_trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html"
     params:
         out_dir = "data/qc_trim_galore"
     log:

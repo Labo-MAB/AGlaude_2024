@@ -14,7 +14,6 @@
 # >>> filter_gtf_pc_genes >>> extraits les gènes codants pour des protéines avec fichier d'annotation.gtf >>> output = .gtf fitlré contenant les gènes codants pour proteines
 # >>> merge_kallisto_quant >>> combine les résultats de quantifications de kallisto en 1 df
 
-# >>> À Ajouter : Va falloir automatiser les rentrées de données et la manipulations des fichiers /nom etc. 
 # >>> À Ajouter : Changer le lien du génome de reference
 # >>> Fomonet utilisera build_transcriptome.output.fasta et la liste transcrits par kallisto_quant.output donc
 # >>> bd ref + ref.mutee sera utiliser avec la liste de variants
@@ -22,46 +21,45 @@
 
 #ce qu'il faut, c'est prendre les transcrits et nvx transcrits , creer un nouveau fasta manuellement combinants les variants qui seront trouvés et les renommés #on ne veut pas savoir quil y a le cancer, on le sait deja, mais 
 #quel sont les changements proteiques et quel est limpact 
+# refaire un .fasta avec les transcrits et les variants obtenus , bien identifié les variants (nom + position) Donc, on va avoir un .fasta avec tout les transcrits, mais avec les variants inclus. 
+# Dans le sens que certains transcrits auront des variants , donc faut inclure ses variants dans le fichier la liste de transcrits
 # snakemake --profile ../profile_local/ --latency-wait 3
+# snakemake --rerun-incomplete --latency-wait 60 --profile ../profile_local/
 
 
 configfile: "../profile_local/config.yaml"
 configfile: "../config/config.json"
 
-#171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L001_R2_001.220405.A00516.AHVHTNDSX2.fastq
+
 directory = os.path.join(config["path"]["fastq_dir"])
-file_dict = {}
-
-for filename in os.listdir(directory):
-    if filename.endswith(".fastq"):
-        base_id = filename.rsplit('_', 2)[0]  # Enlève les deux derniers segments
-        lane = filename.split('_')[-2]  # Extrait L00x (avant R1/R2)
-        key = f"{base_id}_{lane}" 
-        if key not in file_dict:
-            file_dict[key] = []
-        file_dict[key].append(filename)
-
-id_list = list(file_dict.keys())
+id_set = set()
+for nom_fichier in os.listdir(directory):
+    if nom_fichier.endswith(".fastq.gz"):
+        parties = nom_fichier.split('_')
+        if len(parties) > 8:  
+            id_part = "_".join(parties[:8])  
+            id_set.add(id_part)  
+id_list = list(id_set) # ['171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002']
+print(id_list)
 
 #id_list = [
 #    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier fera cela
-#
 #]
 
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
 include: "rules/variants.smk"
-
+#include: "merge_txvariant.smk"
 
 rule all:
     input:
-        expand("data/qc/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/qc/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", id=id_list), 
-        expand("data/trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list), 
-        expand("data/qc_trim_galore/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
-        expand("data/qc_trim_galore/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
+        expand("data/qc/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
+        expand("data/qc/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
+        expand("data/trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", id=id_list), 
+        expand("data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list), 
+        expand("data/qc_trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
+        expand("data/qc_trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
         expand("results/variants/{id}_filtred.vcf", id=id_list),
         expand("results/dge/kallisto/{id}_tpm.tsv", id=id_list)

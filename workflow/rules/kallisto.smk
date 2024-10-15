@@ -39,7 +39,7 @@ rule kallisto_quant:
         fq1 = rules.trim_reads.output.gal_trim1,
         fq2 = rules.trim_reads.output.gal_trim2
     output:
-        "results/dge/kallisto/{id}/abundance.tsv"
+        "results/dge/kallisto/{id}_abundance.tsv"
     params:
         bootstrap = "50",
         outdir = "results/dge/kallisto/{id}"
