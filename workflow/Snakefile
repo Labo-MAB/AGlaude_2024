@@ -76,4 +76,4 @@ rule quantification:
     input:
         build_transcriptome = "data/references/kallisto/transcriptome.fa",
         build_index = "data/references/kallisto/transcriptome.fa",
-        Kall_quantif = expand("results/dge/kallisto/{id}_tpm.tsv", id = id_list),# résultat
+        Kall_quantif = expand("results/dge/kallisto/{id}_tpm.tsv", id = id_list)# résultat
