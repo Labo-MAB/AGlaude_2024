@@ -14,7 +14,6 @@
 # >>> filter_gtf_pc_genes >>> extraits les gènes codants pour des protéines avec fichier d'annotation.gtf >>> output = .gtf fitlré contenant les gènes codants pour proteines
 # >>> merge_kallisto_quant >>> combine les résultats de quantifications de kallisto en 1 df
 
-# >>> À Ajouter : Changer le lien du génome de reference
 # >>> Fomonet utilisera build_transcriptome.output.fasta et la liste transcrits par kallisto_quant.output donc
 # >>> bd ref + ref.mutee sera utiliser avec la liste de variants
 # >>> BD trad. in silico : ORFs  ATG >30codons
@@ -64,8 +63,8 @@ rule all:
 #        expand("results/variants/{id}_filtred.vcf", id=id_list),
         expand("results/dge/kallisto/{id}/abundance.tsv", id=id_list),
 #        expand("results/dge/kallisto/{id}_merged_tpm.tsv", id=id_list),
-        expand("results/merged/{id}/{id}.fasta", id=id_list)
-
+#        expand("results/merged/{id}/{id}.fasta", id=id_list)
+        expand("results/variants/{id}/annotated_variants.vcf", id=id_list)
 
 
 rule download_genome:

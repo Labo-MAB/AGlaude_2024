@@ -1,0 +1,15 @@
+name: vep-env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - ensembl-vep   
+  - bcftools      
+  - htslib        
+  - samtools      
+  - perl         
+  - perl-dbi      
+  - perl-db-file  
+  - wget          
+  - tabix         

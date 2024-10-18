@@ -6,7 +6,7 @@ rule call_variants:
         vcf = "results/variants/{id}.vcf"
     params:
         out_dir = "results/variants",
-        min_alternate_count = 1,  
+        min_alternate_count = 1,  # 5
         min_coverage = 10
     conda:
         "../envs/freebaye.yml"
@@ -30,11 +30,13 @@ rule filter_variants:
     output:
         vcf_filtered = "results/variants/{id}_filtred.vcf"
     conda:
-        "../envs/python.yml"  # Environnement contenant Python
+        "../envs/python.yml"  
     log:
         "logs/filter_variants_{id}.log"
     script:
         "../scripts/filter_variants.py"  
+
+
 # Règle pour l'annotation des variants avec OpenVar
 #rule annotate_variants:
 #    input:

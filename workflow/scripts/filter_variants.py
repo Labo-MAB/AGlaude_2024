@@ -1,6 +1,5 @@
 def filter_variants(vcf_file, output_file, min_quality=20):
     try:
-        # Créer le répertoire de sortie s'il n'existe pas
         output_dir = os.path.dirname(output_file)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -18,7 +17,6 @@ def filter_variants(vcf_file, output_file, min_quality=20):
                 except (IndexError, ValueError) as e:
                     print(f"Error processing line: {line.strip()}")
                     print(f"Exception: {e}")
-                    # Ajouter une gestion d'exception plus claire
                     raise
 
     except FileNotFoundError:
