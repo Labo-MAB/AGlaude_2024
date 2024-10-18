@@ -13,6 +13,9 @@ final_df = pd.DataFrame()
 cycle = 1
 sample_list = []
 
+print(gtf)
+print("bob")
+print(tx2gene)
 with open(log_file_path, 'w') as log_file:
     log_file.write("Starting merge process\n")
 

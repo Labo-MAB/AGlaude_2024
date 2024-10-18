@@ -13,7 +13,7 @@ rule fastqc:
         qc_fq1_out = "data/qc/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html",
         qc_fq2_out = "data/qc/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html"
     params:
-        out_dir = "data/qc"
+        out_dir = "data/qc/{id}"
     log:
         "logs/fastqc_{id}.log"
     threads: 8
@@ -22,7 +22,6 @@ rule fastqc:
     shell:
         "mkdir -p {params.out_dir} && "
         "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log}"
-
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
@@ -34,7 +33,7 @@ rule trim_reads:
         gal_trim1 = "data/trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", # les fichiers validés par trim_galore
         gal_trim2 = "data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz"  
     params:
-        out_dir = "data/trim_galore"
+        out_dir = "data/trim_galore/{id}"
     threads:
         8
     conda:
@@ -43,9 +42,9 @@ rule trim_reads:
         "logs/trim_{id}.log"
     shell:
         """
-        mkdir -p {params.out_dir} \
+        mkdir -p {params.out_dir} &&\
         trim_galore --paired {input.fq1} {input.fq2} \
-        --output_dir data/trim_galore --gzip \
+        --output_dir {params.out_dir} --gzip \
         &> {log}
         """
 
@@ -61,7 +60,7 @@ rule qc_fastq:
         qc_trimm_fq1_out = "data/qc_trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html",
         qc_trimm_fq2_out = "data/qc_trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html"
     params:
-        out_dir = "data/qc_trim_galore"
+        out_dir = "data/qc_trim_galore/{id}"
     log:
         "logs/qc_trim_galore/{id}.log"
     threads:

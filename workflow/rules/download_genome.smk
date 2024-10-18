@@ -7,7 +7,7 @@ rule download_human_gtf:
     params:
         link = config['download']['human_gtf']
     shell:
-        #"mkdir -p data/references/gtf &&"
+        "mkdir -p data/references/gtf &&"
         "wget -O temp.gz {params.link} && "
         "gunzip temp.gz && "
         "mv temp {output.gtf}"
@@ -21,6 +21,7 @@ rule download_human_gff3:
     params:
         link = config['download']['human_gff3']
     shell:
+        "mkdir -p data/references/gff3 && "
         "wget -O temp.gz {params.link} && "
         "gunzip temp.gz && "
         "mv temp {output.gff3}"

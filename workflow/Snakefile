@@ -50,7 +50,7 @@ include: "rules/download_genome.smk"
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
 include: "rules/variants.smk"
-#include: "merge_txvariant.smk"
+include: "rules/add_variants.smk"
 
 rule all:
     input:
@@ -61,17 +61,20 @@ rule all:
         expand("data/qc_trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
         expand("data/qc_trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
-        expand("results/variants/{id}_filtred.vcf", id=id_list),
-        expand("results/dge/kallisto/{id}_tpm.tsv", id=id_list)
+#        expand("results/variants/{id}_filtred.vcf", id=id_list),
+        expand("results/dge/kallisto/{id}/abundance.tsv", id=id_list),
+#        expand("results/dge/kallisto/{id}_merged_tpm.tsv", id=id_list),
+        expand("results/merged/{id}/{id}.fasta", id=id_list)
+
+
 
 rule download_genome:
     input:
         gff3 = 'data/references/gff3/homo_sapiens.gff3',
         genome = 'data/references/genome_fa/homo_sapiens_genome.fa',
 
-
 rule quantification: 
     input:
         build_transcriptome = "data/references/kallisto/transcriptome.fa",
         build_index = "data/references/kallisto/transcriptome.fa",
-        Kall_quantif = expand("results/dge/kallisto/{id}/abundance.tsv", id = id_list),# résultat
+        Kall_quantif = expand("results/dge/kallisto/{id}_tpm.tsv", id = id_list),# résultat

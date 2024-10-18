@@ -38,11 +38,11 @@ rule kallisto_quant:
         idx = rules.kallisto_index.output,
         fq1 = rules.trim_reads.output.gal_trim1,
         fq2 = rules.trim_reads.output.gal_trim2
-    output:
-        "results/dge/kallisto/{id}_abundance.tsv"
+    output: 
+        abundance_tsv = "results/dge/kallisto/{id}/abundance.tsv"
     params:
         bootstrap = "50",
-        outdir = "results/dge/kallisto/{id}"
+        outdir = "results/dge/kallisto/{id}/"
     threads:
         1
     conda:
@@ -94,7 +94,7 @@ rule merge_kallisto_quant:
         tx2gene = rules.tx2gene.output.tsv,
         gtf = rules.filter_gtf_pc_genes.output.pc_gtf
     output:
-        tpm = "results/dge/kallisto/{id}_tpm.tsv"
+        tpm = "results/dge/kallisto/{id}_merged_tpm.tsv"
     conda:
         "../envs/python.yml"
     log:
