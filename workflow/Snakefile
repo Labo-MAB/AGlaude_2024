@@ -38,12 +38,8 @@ for nom_fichier in os.listdir(directory):
         if len(parties) > 8:  
             id_part = "_".join(parties[:8])  
             id_set.add(id_part)  
-id_list = list(id_set) # ['171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002']
-print(id_list)
 
-#id_list = [
-#    "171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002"  # a grande quantité, un traitement de lignes de fichier fera cela
-#]
+id_list = list(id_set) 
 
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
@@ -60,12 +56,11 @@ rule all:
         expand("data/qc_trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
         expand("data/qc_trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
-#        expand("results/variants/{id}_filtred.vcf", id=id_list),
+        expand("results/variants/{id}_filtred.vcf", id=id_list),
         expand("results/dge/kallisto/{id}/abundance.tsv", id=id_list),
 #        expand("results/dge/kallisto/{id}_merged_tpm.tsv", id=id_list),
 #        expand("results/merged/{id}/{id}.fasta", id=id_list)
         expand("results/variants/{id}/annotated_variants.vcf", id=id_list)
-
 
 rule download_genome:
     input:
