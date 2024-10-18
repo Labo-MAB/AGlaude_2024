@@ -9,78 +9,44 @@ gtf = snakemake.input.gtf
 outfile = snakemake.output.tpm
 log_file_path = snakemake.log[0]
 
-final_df = pd.DataFrame()
-cycle = 1
-sample_list = []
+import pandas as pd
+from Bio import SeqIO
 
-print(gtf)
-print("bob")
-print(tx2gene)
-with open(log_file_path, 'w') as log_file:
-    log_file.write("Starting merge process\n")
+# Charger le fichier VCF
+vcf_file =  snakemake.output.call_variants
+vcf_data = pd.read_csv(vcf_file, sep='\t', comment='#', header=None, 
+                       names=['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', 'SAMPLE'])
 
-    log_file.write(f"Reading GTF file from {gtf}\n")
-    df_gtf = read_gtf(gtf)
-    protein_coding_genes = set(df_gtf[df_gtf['gene_biotype'] == 'protein_coding']['gene_id'].dropna().unique())
-    protein_coding_transcripts = set(df_gtf[df_gtf['gene_id'].isin(protein_coding_genes)]['transcript_id'].dropna().unique())
-    log_file.write(f"Number of protein coding transcripts (based on gene_biotype): {len(protein_coding_transcripts)}\n")
+# Charger les séquences de transcrits à partir du fichier FASTA
+fasta_file =  snakemake.output.build_transcriptome
+transcripts = {rec.id: rec.seq for rec in SeqIO.parse(fasta_file, "fasta")}
 
-    for q in snakemake.input.quant:
-        log_file.write(f"Processing file: {q}\n")
-        
-        data = pd.read_csv(q, sep='\t', usecols=['target_id', 'tpm'])
-        log_file.write(f"Read {data.shape[0]} rows from {q}\n")
+# Parcourir les variants et appliquer les modifications aux séquences
+for idx, variant in vcf_data.iterrows():
+    chrom = variant['CHROM']
+    pos = int(variant['POS']) - 1  # L'index dans Python commence à 0
+    ref = variant['REF']
+    alt = variant['ALT']
 
-        data = data[data['target_id'].isin(protein_coding_transcripts)]
-        log_file.write(f"Filtered {data.shape[0]} rows to protein-coding transcripts\n")
+    # Identifier le transcrit concerné par le variant
+    # Ici, il faut une logique qui associe chaque variant à un transcrit
+    # Supposons que vous ayez une fonction 'get_transcript_from_position' qui fait cette association
+    transcript_id = get_transcript_from_position(chrom, pos)
+    if transcript_id:
+        transcript_seq = transcripts[transcript_id]
 
-        sample = os.path.basename(os.path.dirname(q))
+        # Vérifier que la base à la position correspond à REF
+        if transcript_seq[pos] == ref:
+            # Créer la séquence modifiée avec ALT
+            modified_seq = transcript_seq[:pos] + alt + transcript_seq[pos + 1:]
 
-        data.set_index('target_id', inplace=True)
-        data.rename(columns={"tpm": sample}, inplace=True)
-
-        if cycle == 1:
-            final_df = data
+            # Stocker la nouvelle séquence avec un nom modifié
+            new_transcript_id = f"{transcript_id}_variant_chr{chrom}_{pos+1}"
+            transcripts[new_transcript_id] = modified_seq
         else:
-            final_df = pd.merge(final_df, data, left_index=True, right_index=True, how='outer')
+            print(f"Mismatch: expected {ref} at position {pos}, but found {transcript_seq[pos]}")
 
-        sample_list += [sample]
-        cycle += 1
-
-        log_file.write(f"Final dataframe shape after merging {sample}: {final_df.shape}\n")
-
-    log_file.write(f"Reading transcript to gene ID mapping from {tx2gene}\n")
-    ids = pd.read_csv(tx2gene, sep='\t', names=['transcript', 'gene'])
-    ids.set_index('transcript', inplace=True, drop=False)
-
-    final_df = pd.merge(final_df, ids, left_index=True, right_index=True, how='left')
-    final_df.set_index('gene', inplace=True)
-    log_file.write(f"Final dataframe shape after adding gene IDs: {final_df.shape}\n")
-
-    # Skipping TPM filtering to keep all rows
-    log_file.write("Skipping TPM filtering\n")
-    filtered = final_df
-    log_file.write(f"Dataframe shape without TPM filtering: {filtered.shape}\n")
-
-    id_name = df_gtf[['gene_id', 'gene_name']].drop_duplicates(ignore_index=True)
-
-    index = filtered.index.tolist()
-    names = []
-
-    for i in range(len(index)):
-        id = index[i]
-        if id in id_name['gene_id'].values:
-            name = id_name[id_name['gene_id'] == id].iloc[0]['gene_name']
-        else:
-            name = "Unknown"
-        names.append(name)
-
-    log_file.write("Adding gene names\n")
-    filtered['gene_name'] = names
-    cols = filtered.columns.tolist()
-    cols = cols[-1:] + cols[:-1]
-    filtered = filtered[cols]
-
-    log_file.write("Writing final output file\n")
-    filtered.to_csv(outfile, sep='\t')
-    log_file.write("Merge process completed successfully\n")
+# Écrire les séquences modifiées dans un nouveau fichier FASTA
+with open("modified_transcripts.fasta", "w") as output_fasta:
+    for transcript_id, seq in transcripts.items():
+        output_fasta.write(f">{transcript_id}\n{str(seq)}\n")
