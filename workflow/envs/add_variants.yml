@@ -1,0 +1,8 @@
+name: add_variants_env
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.8
+  - biopython
+  - pyvcf

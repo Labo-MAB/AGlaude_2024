@@ -1,26 +1,42 @@
-rule vep_annotation:
+#rule vep_annotation:
+#    input:
+#        vcf= rules.call_variants.output.vcf
+#    output:
+#        vcf="results/variants/{id}/annotated_variants.vcf"
+#    conda:
+#        "../envs/vep.yml"
+#    shell:
+#        """
+#        vep --input_file {input.vcf} --output_file {output.vcf} --format vcf --vcf --symbol --canonical --hgvs --protein --ccds --uniprot --biotype --nearest symbol --distance 5000 --species homo_sapiens 2> error.log
+#        """
+rule bgzip_vcf:
     input:
-        vcf= rules.call_variants.output.vcf
+        vcf= rules.filter_variants.output.vcf_filtered,
     output:
-        vcf="results/variants/{id}/annotated_variants.vcf"
+        vcf_gz="results/variants/{id}/variant_filtered.vcf.gz",
+        vcf_gz_tbi="results/variants/{id}/variant_filtered.vcf.gz.tbi"
     conda:
-        "../envs/vep.yml"
+        "../envs/bcftools.yml"
+    log:
+        "logs/bgzip_vcf_{id}.log"
     shell:
         """
-        vep --input_file {input.vcf} --output_file {output.vcf} --format vcf --vcf --symbol --canonical --hgvs --protein --ccds --uniprot --biotype --nearest symbol --distance 5000 --species homo_sapiens
+        bgzip -c {input.vcf} > {output.vcf_gz}
+        tabix -p vcf {output.vcf_gz}
         """
-
 rule bcftools_consensus:
     input:
-        vcf= rules.vep_annotation.output.vcf,
-        ref= rules.download_human_genome.output.genome
+        vcf = rules.bgzip_vcf.output.vcf_gz,
+        ref = rules.download_human_genome.output.genome
     output:
-        fasta="results/{id}/mutated_sequence.fasta"
+        fasta = "results/variants/{id}/mutated_sequence.fasta"
     conda:
-        "envs/bcftools.yaml"
+        "../envs/bcftools.yml"
+    log:
+        "logs/bcftools_{id}.log"
     shell:
         """
-        bcftools consensus -f {input.ref} {input.vcf} > {output.fasta}
+        bcftools consensus -f {input.ref} {input.vcf} > {output.fasta} 2> {log}
         """
 
 

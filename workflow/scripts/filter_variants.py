@@ -3,13 +3,12 @@ import os
 # Paramètres depuis Snakemake
 vcf_file = snakemake.input.vcf  # Correction de l'accès au fichier
 output_file = snakemake.output.vcf_filtered  # Correction du nom de la sortie
-
 def filter_variants(vcf_file, output_file, min_quality=20):
     try:
         output_dir = os.path.dirname(output_file)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-
+        print("Opening files...")
         with open(vcf_file) as vcf, open(output_file, 'w') as out:
             for line in vcf:
                 if line.startswith('#'):
@@ -32,3 +31,4 @@ def filter_variants(vcf_file, output_file, min_quality=20):
     except IOError as e:
         print(f"I/O error: {e}")
         raise
+filter_variants(vcf_file, output_file)

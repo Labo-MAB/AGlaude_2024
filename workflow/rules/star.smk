@@ -26,8 +26,8 @@ rule fastqc:
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
     input:
-#        fq1 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
-#        fq2 = "/mnt/c/Users/Antho/Documents/breast_cancer/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
+#        fq1 = "/mnt/f/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz",
+#        fq2 = "/mnt/f/data/171992_SIMG0590_T_totalRNA_sarcoma_43378_S9_L002_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz"
         fq1 = os.path.join(config["path"]["fastq_dir"], "{id}_R1_001.220405.A00516.AHVHTNDSX2.fastq.gz"),
         fq2 = os.path.join(config["path"]["fastq_dir"], "{id}_R2_001.220405.A00516.AHVHTNDSX2.fastq.gz")
     output:

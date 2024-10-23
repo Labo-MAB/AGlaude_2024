@@ -1,34 +1,37 @@
 rule call_variants:
     input:
         bam = rules.star_alignreads.output.bam,
-        genome = rules.download_human_genome.output.genome
+        genome = rules.download_human_genome.output.genome,
+        gtf = rules.download_human_gtf.output.gtf
     output:
-        vcf = "results/variants/{id}.vcf"
+        vcf = "results/variants/{id}/variants.vcf",
+        annotated_vcf = "results/variants/{id}/annotated_variants.vcf"
     params:
         out_dir = "results/variants",
         min_alternate_count = 5,  
         min_coverage = 10
     conda:
-        "../envs/freebaye.yml"
+        "../envs/freebayes.yml"
     log:
         "logs/freebayes_{id}.log"
     threads: 8  
     shell: 
-        """
-        mkdir -p {params.out_dir} && \
-        freebayes -f {input.genome} \
-            --min-alternate-count {params.min_alternate_count} \
-            --min-coverage {params.min_coverage} \
-            {input.bam} \
-            > {output.vcf} \
-            2> {log}
-        """
+            """
+            mkdir -p {params.out_dir} && \
+            freebayes -f {input.genome} \
+                --min-alternate-count {params.min_alternate_count} \
+                --min-coverage {params.min_coverage} \
+                {input.bam} \
+                > {output.vcf} \
+                2>> {log} && \
+            snpEff ann -v hg19 {output.vcf} > {output.annotated_vcf} 2>> {log}
+            """
 
 rule filter_variants:
     input:
         vcf = rules.call_variants.output.vcf
     output:
-        vcf_filtered = "results/variants/{id}_filtered.vcf" 
+        vcf_filtered = "results/variants/{id}/variant_filtered.vcf" 
     conda:
         "../envs/python.yml"  
     log:
