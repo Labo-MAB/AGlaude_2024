@@ -45,7 +45,7 @@ include: "rules/download_genome.smk"
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
 include: "rules/variants.smk"
-include: "rules/add_variants.smk"
+#include: "rules/add_variants.smk"
 
 rule all:
     input:
@@ -58,9 +58,10 @@ rule all:
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
         expand("results/variants/{id}/variant_filtered.vcf", id=id_list),
         expand("results/dge/kallisto/{id}/abundance.tsv", id=id_list),
-#        expand("results/dge/kallisto/{id}_merged_tpm.tsv", id=id_list),
+        expand("results/variants/{id}/transcrits_variants.fa", id=id_list),
 #        expand("results/merged/{id}/{id}.fasta", id=id_list)
-        expand("results/variants/{id}/mutated_sequence.fasta", id=id_list)
+#        expand("results/variants/{id}/annotat_variants.vcf", id=id_list),
+#        expand("results/variants/{id}/test_transcripts.fa", id=id_list)
 rule download_genome:
     input:
         gff3 = 'data/references/gff3/homo_sapiens.gff3',

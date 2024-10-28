@@ -2,8 +2,12 @@ name: vep_env
 channels:
   - bioconda
   - conda-forge
-  - defaults
 dependencies:
+  - perl
+  - perl-archive-zip
+  - perl-dbd-mysql
+  - perl-dbi
+  - gcc_linux-64
+  - gxx_linux-64
+  - make
   - ensembl-vep
-  - perl-compress-raw-zlib=2.202
-  - perl-dbi 

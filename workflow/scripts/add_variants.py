@@ -1,31 +1,47 @@
 import sys
 from Bio import SeqIO
-import vcf
 
-# Variables passées depuis Snakemake
-vcf_file = sys.argv[1]  # Le chemin vers le fichier VCF
-abundance_tsv = sys.argv[2]  # Le chemin vers le fichier TSV (abondances)
-output_fasta = sys.argv[3]  # Le chemin vers la sortie FASTA
+# Accéder aux fichiers d'entrée et de sortie via Snakemake
+fasta_file = snakemake.input.fasta  # Fichier FASTA des transcrits
+vcf_file = snakemake.input.vcf       # Fichier VCF filtré
+gtf_file = snakemake.input.gtf       # Fichier GTF
 
-# Charger les transcrits de référence depuis un fichier FASTA (doit être fourni)
-reference_fasta = "path/to/transcripts_reference.fasta"
-reference_transcripts = SeqIO.to_dict(SeqIO.parse(reference_fasta, "fasta"))
+# Fichier de sortie
+output_file = snakemake.output[0]    # Fichier de sortie pour les transcrits avec mutations
 
-# Charger le fichier VCF avec les variants
-vcf_reader = vcf.Reader(open(vcf_file, 'r'))
+# Logique pour appliquer les mutations aux transcrits
+# Exemple simple de lecture du fichier FASTA
+def read_fasta(file):
+    with open(file, "r") as handle:
+        return {record.id: str(record.seq) for record in SeqIO.parse(handle, "fasta")}
 
-# Appliquer les variants sur les séquences
-for record in vcf_reader:
-    chrom = record.CHROM  # Chromosome ou identifiant du transcrit
-    pos = record.POS      # Position du variant
-    ref = record.REF      # Allèle de référence
-    alt = record.ALT      # Allèle alternatif (mutation)
-    
-    if chrom in reference_transcripts:
-        seq = reference_transcripts[chrom].seq
-        mutated_seq = seq[:pos-1] + alt[0] + seq[pos:]  # Appliquer la mutation
-        reference_transcripts[chrom].seq = mutated_seq  # Mettre à jour la séquence
+# Exemple simple de lecture du fichier VCF pour obtenir les mutations
+def read_vcf(file):
+    mutations = []
+    with open(file, "r") as handle:
+        for line in handle:
+            if line.startswith("#"):
+                continue  # Ignorer les lignes de header
+            fields = line.strip().split("\t")
+            # Supposons que la mutation est dans la colonne 4 (allele d'alternative)
+            mutations.append((fields[0], int(fields[1]), fields[4]))  # (chromosome, position, mutation)
+    return mutations
 
-# Enregistrer le fichier FASTA avec les variants
-with open(output_fasta, "w") as fasta_out:
-    SeqIO.write(reference_transcripts.values(), fasta_out, "fasta")
+# Appliquer les mutations aux séquences
+def apply_mutations(transcripts, mutations):
+    for chromosome, position, mutation in mutations:
+        # Appliquer la mutation au bon transcrit ici
+        # Cela nécessite de mapper la position au transcrit
+        pass  # Logique d'application de mutation à implémenter
+
+# Lire les fichiers
+transcripts = read_fasta(fasta_file)
+mutations = read_vcf(vcf_file)
+
+# Appliquer les mutations
+apply_mutations(transcripts, mutations)
+
+# Écrire le fichier de sortie avec les transcrits d'origine et les versions mutées
+with open(output_file, "w") as out_handle:
+    for transcript_id, seq in transcripts.items():
+        out_handle.write(f">{transcript_id}\n{seq}\n")

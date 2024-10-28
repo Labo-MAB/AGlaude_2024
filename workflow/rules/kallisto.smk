@@ -4,7 +4,7 @@ rule build_transcriptome:
         genome = rules.download_human_genome.output.genome,
         gtf = rules.download_human_gtf.output.gtf
     output:
-        config["path"]["transcriptome"]
+        transcriptome = config["path"]["transcriptome"]
     conda:
         "../envs/gffread.yml"
     message:
