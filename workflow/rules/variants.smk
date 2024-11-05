@@ -5,12 +5,11 @@ rule call_variants:
         gtf = rules.download_human_gtf.output.gtf
     output:
         vcf = "results/variants/{id}/variants.vcf",
-        annotated_vcf = "results/variants/{id}/annotated_variants.vcf"
+        annotated_vcf = "results/variants/{id}/variants_annotated.vcf"
     params:
         out_dir = "results/variants",
         min_alternate_count = 5,  
-        min_coverage = 10,
-        snpeff_db = "GRCh38.99" 
+        min_coverage = 10
     conda:
         "../envs/freebayes.yml"
     log:
@@ -18,14 +17,14 @@ rule call_variants:
     threads: 8  
     shell: 
         """
-        mkdir -p {params.out_dir} && \
+        mkdir -p results/variants && \
         freebayes -f {input.genome} \
             --min-alternate-count {params.min_alternate_count} \
             --min-coverage {params.min_coverage} \
             {input.bam} \
             > {output.vcf} \
             2>> {log} && \
-        snpEff ann -v {params.snpeff_db} -Xmx4g {output.vcf} > {output.annotated_vcf} 2>> {log}
+        snpeff -hgvsTrId -geneId hg38 {output.vcf} -o vcf > {output.annotated_vcf} 2>> {log}
         """
 
 rule filter_variants:
@@ -38,7 +37,9 @@ rule filter_variants:
     log:
         "logs/filter_variants_{id}.log"
     shell:
-        "bcftools filter -s LowQual -e '%QUAL<20' {input.vcf} -o {output.vcf_filtered} > {log} 2>&1"
+        #"scripts/filter_variants.py" 
+        "bcftools filter -s LowQual -e 'QUAL<20' {input.vcf} -o {output.vcf_filtered} > {log} 2>&1"
+
 
 
 rule apply_variants:
@@ -47,7 +48,7 @@ rule apply_variants:
         vcf = rules.filter_variants.output.vcf_filtered,  # Fichier VCF filtré
         gtf = rules.download_human_gtf.output.gtf  # Fichier GTF
     output:
-        "results/variants/{id}/transcrits_variants.fa"  # Fichier de sortie pour les transcrits avec variantes
+        fasta = "results/variants/{id}/transcrits_variants.fa"  # Fichier de sortie pour les transcrits avec variantes
     conda:
         "../envs/python.yml"  # Environnement Conda si nécessaire
     log:
