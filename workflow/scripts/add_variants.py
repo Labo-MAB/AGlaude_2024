@@ -21,19 +21,23 @@ def read_vcf(vcf_file):
             
             # Extraire le nom du gène ou la région depuis INFO
             gene_name = '.'
+            is_intergenic = False
             for item in info_field.split(';'):
                 if item.startswith('ANN='):
                     # Extraire le nom du gène après "ANN=" et le premier '|' (il peut y avoir d'autres annotations)
                     gene_info = item.split('|')
-                    if len(gene_info) > 3:  # Assurez-vous qu'il y a assez d'éléments dans la liste
+                    if len(gene_info) > 3:
                         gene_name = gene_info[3]
+                    # Vérifier si la région est intergénique
+                    if 'intergenic_region' in gene_info:
+                        is_intergenic = True
                     break
             
             # Ajouter l'entrée à la liste des mutations
-            mutations.append((chromosome, position, ref_nucleotide, alt_nucleotide, gene_name))
+            mutations.append((chromosome, position, ref_nucleotide, alt_nucleotide, gene_name, is_intergenic))
     
     # Convertir la liste en DataFrame
-    mutations_df = pd.DataFrame(mutations, columns=['chromosome', 'position', 'ref_nucleotide', 'alt_nucleotide', 'gene_name'])
+    mutations_df = pd.DataFrame(mutations, columns=['chromosome', 'position', 'ref_nucleotide', 'alt_nucleotide', 'gene_name', 'is_intergenic'])
     pd.set_option('display.max_rows', None)  # Affiche toutes les lignes
     pd.set_option('display.max_columns', None)  # Affiche toutes les colonnes
 
@@ -86,6 +90,10 @@ def modify_transcript(vcf_file, gtf_file, fasta_file, output_file):
         out.write("Le fichier a bien été généré avec les mutations suivantes :\n\n")
 
         for index, row in mutations_df.iterrows():
+            # Vérifier si la mutation est intergénique
+            if row.get('is_intergenic', False):  # Par défaut, considère comme False si la colonne n'existe pas
+                continue  # Passer à la mutation suivante si is_intergenic est True
+
             chromosome = row['chromosome']
             position = row['position']
             ref_nucleotide = row['ref_nucleotide']
