@@ -44,7 +44,8 @@ rule filter_variants:
 
 rule apply_variants:
     input:
-        fasta = rules.build_transcriptome.output.transcriptome,  # Remplacez par le chemin réel
+        #fasta = rules.build_transcriptome.output.transcriptome,
+        fasta = rules.download_human_genome.output.genome,  # Remplacez par le chemin réel
         vcf = rules.filter_variants.output.vcf_filtered,  # Fichier VCF filtré
         gtf = rules.download_human_gtf.output.gtf  # Fichier GTF
     output:

@@ -6,41 +6,31 @@ def read_vcf(vcf_file):
     with open(vcf_file, 'r') as vcf:
         for line in vcf:
             if line.startswith('##'):
-                continue  # Ignorer les lignes de commentaires
+                continue  
             if line.startswith('#'):
-                continue  # Ignorer l'en-tête
-            
+                continue  
+
             fields = line.strip().split('\t')
-            
-            # Extraire les informations nécessaires
             chromosome = fields[0]
             position = int(fields[1])
             ref_nucleotide = fields[3]
             alt_nucleotide = fields[4]
             info_field = fields[7]
-            
-            # Extraire le nom du gène ou la région depuis INFO
             gene_name = '.'
             is_intergenic = False
+
             for item in info_field.split(';'):
                 if item.startswith('ANN='):
-                    # Extraire le nom du gène après "ANN=" et le premier '|' (il peut y avoir d'autres annotations)
+                    # Extrait le nom du gène après "ANN=" et le premier '|' 
                     gene_info = item.split('|')
                     if len(gene_info) > 3:
                         gene_name = gene_info[3]
-                    # Vérifier si la région est intergénique
-                    if 'intergenic_region' in gene_info:
+                        print(f"Gene Info 1: {gene_info[1]}, Gene Info 3: {gene_info[3]}")
+                    if 'intergenic_region' in gene_info[1]:
                         is_intergenic = True
                     break
-            
-            # Ajouter l'entrée à la liste des mutations
             mutations.append((chromosome, position, ref_nucleotide, alt_nucleotide, gene_name, is_intergenic))
-    
-    # Convertir la liste en DataFrame
-    mutations_df = pd.DataFrame(mutations, columns=['chromosome', 'position', 'ref_nucleotide', 'alt_nucleotide', 'gene_name', 'is_intergenic'])
-    pd.set_option('display.max_rows', None)  # Affiche toutes les lignes
-    pd.set_option('display.max_columns', None)  # Affiche toutes les colonnes
-
+    mutations_df = pd.DataFrame(mutations, columns=['chromosome', 'position', 'ref_nucleotide', 'alt_nucleotide', 'gene_name', 'is_intergenic']) # regarder pour classe/array
     return mutations_df
 
 def read_gtf(gtf_file):
@@ -48,9 +38,9 @@ def read_gtf(gtf_file):
     with open(gtf_file, 'r') as gtf:
         for line in gtf:
             if line.startswith('#'):
-                continue  # Ignorer les lignes de commentaire
+                continue  
             fields = line.strip().split('\t')
-            if fields[2] == 'gene':  # On s'intéresse aux gènes
+            if fields[2] == 'gene': 
                 # Extraire le nom du gène (gene_name) et non l'identifiant génomique
                 attributes = fields[8].split(';')
                 gene_name = None
@@ -65,23 +55,30 @@ def read_gtf(gtf_file):
                         'end': int(fields[4]),
                         'strand': fields[6]
                     }
-    gene_name = "LINC01661"
-    if gene_name in gene_dict:
-        print(f"{gene_name} trouvé dans gene_dict :")
-        print(gene_dict[gene_name])
-    else:
-        print(f"{gene_name} n'est pas trouvé dans gene_dict.")
-#    print(gene_dict)
     return gene_dict
-
 
 def get_sequence_from_genome(genome_file, chromosome, start, end):
     sequence = ''
+    chromosome_found = False  # Flag pour savoir si on trouve le chromosome
+
+    # Parcours les records dans le fichier FASTA
     for record in SeqIO.parse(genome_file, "fasta"):
-        if record.id == chromosome:
-            sequence = str(record.seq[start-1:end])  # Ajuster pour la position 0
+        print(f"Found chromosome: {record.id}")  # Affiche l'ID de chaque chromosome dans le fichier FASTA
+        if record.id == str(chromosome):  # Vérifie que l'identifiant du chromosome correspond à celui passé en paramètre
+            chromosome_found = True
+            # Vérifie que la plage de positions est valide
+            if start < 1 or end > len(record.seq):
+                print(f"Erreur : La plage {start}-{end} dépasse la longueur de la séquence pour {chromosome} ({len(record.seq)} bases).")
+                return sequence  # Retourne une séquence vide si la plage est invalide + message
+
+            sequence = str(record.seq[start-1:end])  # Extraction de la séquence avec ajustement des indices
             break
+    if not chromosome_found:
+        print(f"Chromosome {chromosome} non trouvé dans le fichier FASTA.")
+    elif len(sequence) == 0:
+        print(f"Warning: Séquence vide extraite pour {chromosome} de {start} à {end}.")
     return sequence
+
 def modify_transcript(vcf_file, gtf_file, fasta_file, output_file):
     mutations_df = read_vcf(vcf_file)
     gene_dict = read_gtf(gtf_file)
@@ -90,16 +87,15 @@ def modify_transcript(vcf_file, gtf_file, fasta_file, output_file):
         out.write("Le fichier a bien été généré avec les mutations suivantes :\n\n")
 
         for index, row in mutations_df.iterrows():
-            # Vérifier si la mutation est intergénique
             if row.get('is_intergenic', False):  # Par défaut, considère comme False si la colonne n'existe pas
-                continue  # Passer à la mutation suivante si is_intergenic est True
+                continue  
 
             chromosome = row['chromosome']
             position = row['position']
             ref_nucleotide = row['ref_nucleotide']
             alt_nucleotide = row['alt_nucleotide']
             gene_name = row['gene_name']
-
+            
             if gene_name in gene_dict:
                 gene_info = gene_dict[gene_name]
                 start = gene_info['start']
@@ -108,9 +104,13 @@ def modify_transcript(vcf_file, gtf_file, fasta_file, output_file):
                 # Vérifier si la position est dans les limites du gène
                 if start <= position <= end:
                     sequence = get_sequence_from_genome(fasta_file, chromosome, start, end)
+                    print(f"Length of sequence for gene {gene_name} from {start} to {end} on chromosome {chromosome}: {len(sequence)}")
                     
-                    # Calculer l'index et vérifier qu'il est dans les limites de la séquence
+                    # Calculer l'index relatif pour la mutation dans cette séquence
                     index_in_sequence = position - start
+                    print(f"Position: {position}, Start: {start}, Index in sequence: {index_in_sequence}")
+                    
+                    # Vérifier que l'index est dans les limites de la séquence
                     if 0 <= index_in_sequence < len(sequence):
                         # Vérification du nucléotide de référence
                         if sequence[index_in_sequence] == ref_nucleotide:
@@ -118,10 +118,11 @@ def modify_transcript(vcf_file, gtf_file, fasta_file, output_file):
                             mutated_sequence = sequence[:index_in_sequence] + alt_nucleotide + sequence[index_in_sequence + 1:]
                             # Écrire dans le fichier de sortie
                             out.write(f">{gene_name}_pos{position}\n{mutated_sequence}\n")
+                            print(f"Success: Mutation for {gene_name} at position {position} written to output file.")
                         else:
                             print(f"Warning: Reference nucleotide does not match at {chromosome}:{position}")
                     else:
-                        print(f"Warning: Calculated index {index_in_sequence} is out of range for gene {gene_name} on chromosome {chromosome}")
+                        print(f"Warning: Calculated index {index_in_sequence} is out of range for gene {gene_name} at position {position}")
                 else:
                     print(f"Warning: Position {position} is out of the range ({start}-{end}) for gene {gene_name}")
             else:
