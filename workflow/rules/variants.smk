@@ -1,4 +1,4 @@
-rule call_variants:
+rule call_variants: # Freebayes pour avoir la liste_mutant.vcf des dans l'ARNseq
     input:
         bam = rules.star_alignreads.output.bam,
         genome = rules.download_human_genome.output.genome,
@@ -27,7 +27,7 @@ rule call_variants:
         snpeff -hgvsTrId -geneId hg38 {output.vcf} -o vcf > {output.annotated_vcf} 2>> {log}
         """
 
-rule filter_variants:
+rule filter_variants: # QC des mutants avec trashold de 20 
     input:
         vcf = rules.call_variants.output.annotated_vcf  
     output:
@@ -42,22 +42,37 @@ rule filter_variants:
 
 
 
-rule apply_variants:
+# Next, il faut que un fichier transcriptome non mutant avec tout les gènes ayant un mutant 
+# input -> transcriptome_custom + filter_variants avec grep 
+
+rule filter_transcriptome_by_mutations:
     input:
-        #fasta = rules.build_transcriptome.output.transcriptome,
-        fasta = rules.download_human_genome.output.genome,  # Remplacez par le chemin réel
-        vcf = rules.filter_variants.output.vcf_filtered,  # Fichier VCF filtré
-        gtf = rules.download_human_gtf.output.gtf  # Fichier GTF
+        transcriptome = rules.build_filtered_transcriptome.output.transcriptome_final_custom,
+        vcf = rules.filter_variants.output.vcf_filtered 
     output:
-        fasta = "results/variants/{id}/transcrits_variants.fa"  # Fichier de sortie pour les transcrits avec variantes
+        filtered_transcriptome = "results/{id}/filtered_transcriptome_with_mutations.fa"
     conda:
-        "../envs/python.yml"  # Environnement Conda si nécessaire
-    log:
-        "logs/apply_variants_{id}.log"
+        "../envs/python.yml"
     script:
-        "../scripts/add_variants.py"  # Chemin vers votre script
+        "../scripts/filter_mutated_genes_and_filter_transcriptome.py"  # Script Python pour extraire les gènes mutés et filtrer directement
 
 
+#rule apply_variants: 
+#    input:
+#        #fasta = rules.build_transcriptome.output.transcriptome,
+#        fasta = rules.download_human_genome.output.genome,  # Remplacez par le chemin réel
+#        vcf = rules.filter_variants.output.vcf_filtered,  # Fichier VCF filtré
+#        gtf = rules.download_human_gtf.output.gtf  # Fichier GTF
+#    output:
+#        fasta = "results/variants/{id}/transcrits_variants.fa"  # Fichier de sortie pour les transcrits avec variantes
+#    conda:
+#        "../envs/python.yml"  # Environnement Conda si nécessaire
+#    log:
+#        "logs/apply_variants_{id}.log"
+#    script:
+#        "../scripts/add_variants.py"  # Chemin vers votre script
+#
+#
 # Règle pour l'annotation des variants avec OpenVar
 #rule annotate_variants:
 #    input:

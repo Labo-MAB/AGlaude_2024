@@ -1,5 +1,6 @@
 # Règle pour la quantification des transcrits avec Kallisto  **** A corriger, les paths && les dependances entre chaque rules)
-rule build_transcriptome:
+
+rule build_transcriptome:  # Sert de transcriptome de reference avec tout les id transcrits
     input:
         genome = rules.download_human_genome.output.genome,
         gtf = rules.download_human_gtf.output.gtf
@@ -15,7 +16,7 @@ rule build_transcriptome:
         "gffread {input.gtf} -g {input.genome} -w {output}"  
 
 
-rule kallisto_index:
+rule kallisto_index: # L'index qui sert a quantifier
     input:
         rules.build_transcriptome.output
     output:
@@ -33,7 +34,8 @@ rule kallisto_index:
         "&> {log}"
 
 
-rule kallisto_quant:
+
+rule kallisto_quant: # Donne labandonce des transcrits chez l'individu
     input:
         idx = rules.kallisto_index.output,
         fq1 = rules.trim_reads.output.gal_trim1,
@@ -61,45 +63,42 @@ rule kallisto_quant:
         "{input.fq1} {input.fq2} "
         "&> {log}"
 
-# etape non crucial pour le travail, DGE ne serait pas important, mais si le temps le permet ...
-rule tx2gene:  
-    input:
-        gtf = rules.download_human_gtf.output.gtf
-    output:
-        tsv = "data/references/tx2gene.tsv"
-    conda:
-        "../envs/python.yml"
-    message:
-        "Convert transcript IDs to gene IDs."
-    script:
-        "../scripts/tx2gene.py"
 
-
-rule filter_gtf_pc_genes:
+rule filter_abundance: # ne contient que les transcrits présents dans l'ARNseq (donc retire les 0) Ajouter un trashold pour le nombre de lecture pour etre accepter
     input:
-        gtf = rules.download_human_gtf.output.gtf
+        abundance = rules.kallisto_quant.output.abundance_tsv
     output:
-        pc_gtf = "data/references/gtf/Homo_sapiens.GRCh38.110_snoRNAs_tRNAs.protein_coding.gtf"
+        filtered_abundance = "results/dge/kallisto/{id}/abundance_filtered.tsv",  # Contient seulement les gènes quantifiers 
+        transcript_ids = "results/dge/kallisto/{id}/transcript_ids.txt" # contient seulement le ID des gènes quantifiers
     log:
-        "logs/kallisto/filter_gtf_pc_genes.log"
-    message:
-        "Extract protein coding genes from the genome annotation file."
+        "logs/kallisto/filter_{id}.log"
     shell:
-        "grep \'protein_coding\' {input} > {output}"
+        "awk '$4 > 0' {input.abundance} > {output.filtered_abundance} && "
+        "cut -f1 {output.filtered_abundance} > {output.transcript_ids}"
 
 
-rule merge_kallisto_quant:
+rule build_filtered_transcriptome:
     input:
-        quant = expand(rules.kallisto_quant.output, id = id_list),
-        tx2gene = rules.tx2gene.output.tsv,
-        gtf = rules.filter_gtf_pc_genes.output.pc_gtf
+        gtf = rules.download_human_gtf.output.gtf,
+        genome = rules.download_human_genome.output.genome,
+        transcript_ids = rules.filter_abundance.output.transcript_ids
     output:
-        tpm = "results/dge/kallisto/{id}_merged_tpm.tsv"
+        filtered_gtf = "results/{id}/filtered_transcripts.gtf",
+        transcriptome_final_custom = "results/{id}/transcriptome_final_custom.fa"
     conda:
-        "../envs/python.yml"
-    log:
-        "logs/kallisto/merge_kallisto_quant_{id}.log" 
+        "../envs/gffread.yml"
     message:
-        "Merge kallisto quantification results into one dataframe for further analysis."
-    script:
-        "../scripts/merge_kallisto_quant.py"
+        "Build a filtered reference transcriptome using gffread."
+    log:
+        "logs/build_transcriptome/build_filtered_transcriptome_{id}.log"
+    shell:
+        """
+        # Filtrer le GTF pour ne garder que les transcrits désirés
+        grep -F -f {input.transcript_ids} {input.gtf} > {output.filtered_gtf}
+        
+        # Modifier le GTF pour remplacer 'geneID' par 'gene_name'
+        awk '{{ if ($0 ~ /geneID/) {{ gsub("geneID", "gene_name"); }} print $0; }}' {output.filtered_gtf} > {output.filtered_gtf}_modified.gtf
+        
+        # Générer le transcriptome à partir du GTF filtré et modifié
+        gffread {output.filtered_gtf}_modified.gtf -g {input.genome} -w {output.transcriptome_final_custom}
+        """

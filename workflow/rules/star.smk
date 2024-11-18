@@ -21,7 +21,7 @@ rule fastqc:
         "../envs/fastqc.yml" 
     shell:
         "mkdir -p {params.out_dir} && "
-        "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log} &&"
+        "fastqc --outdir {params.out_dir} --format fastq --threads {threads} {input.fq1} {input.fq2} &> {log} "
 
 # Règle pour le trimming avec trim_galore
 rule trim_reads:
