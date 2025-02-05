@@ -1,21 +1,18 @@
 {
   "path": {
     "fastq": "data/references/fastq/",
-    "fastq_dir": "/mnt/f/data/",
-    "fastq_dir1": "/mnt/c/Users/Antho/Documents/breast_cancer/data/",
-    "REFERENCE_GENOME": "reference/GRCh38.p14.fasta",
+    "RNAseq_dir": "../../data",
+    "RNAseq1_dir": "/mnt/c/Users/Antho/Documents/breast_cancer/data/",
     "chrNameLength": "data/references/star_index/chrNameLength.txt",
     "star_index": "data/references/star_index/",
-    "transcriptome": "data/references/transcriptome.fa",
-    "TRANSCRIPT_DB": "reference/transcripts.fasta",
-    "KALLISTO_INDEX": "reference/kallisto_index"
+    "transcriptome": "data/references/transcriptome.fa"
   },
   "download": {
     "human_gtf": "http://ftp.ensembl.org/pub/release-110/gtf/homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz",
     "true_human_gtf": "http://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz",
     "bob_human_gtf": "data/references/gtf/Homo_sapiens.GRCh38.110.gtf",
-    "human_genome_fa": "http://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
-    "true_human_genome_fa": "https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
-    "human_gff3": "http://ftp.ensembl.org/pub/release-110/gff3/homo_sapiens/Homo_sapiens.GRCh38.110.gff3.gz"
+    "true_hhuman_genome_fa": "http://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
+    "human_genome_fa": "https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
+    "human_gff3": "http://ftp.ensembl.org/pub/release-113/gff3/homo_sapiens/Homo_sapiens.GRCh38.113.gff3.gz"
   }
 }
