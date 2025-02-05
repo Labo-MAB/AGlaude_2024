@@ -1,4 +1,3 @@
-# Version 15/10 Projet detection variants / nv transcrits du cancer du seins Projet Dre. Brunet
 # >>> Explication de l'outil 
 # 1) star.smk permet de déterminer le QC , trimming et QC du trimming. Puis, prend genome reference du download_genome.smk pour creer lindex de star
 # >>> Index star  >>> index du genome de reference (ENSEMBL) pour eviter de lire le genome brut 
@@ -10,9 +9,6 @@
 # >>> build_transcriptome >>> sert a former un transcriptome avec genome.fasta et fichier annotation genomique.gtf >>> transcriptome construit
 # >>> kallisto_index >>> Cree un index avec le transcriptome.fasta (build_transcriptome) >>> .fasta
 # >>> kallisto_quant >>> Donne l'abondance en Effectuant une pseudo-alignement avec index (kalisto_quant).fasta et les trimmings >>> output  = abundance.tsv
-# >>> tx2gene >>> converti les transcrits en gènes avec script python
-# >>> filter_gtf_pc_genes >>> extraits les gènes codants pour des protéines avec fichier d'annotation.gtf >>> output = .gtf fitlré contenant les gènes codants pour proteines
-# >>> merge_kallisto_quant >>> combine les résultats de quantifications de kallisto en 1 df
 
 # >>> Fomonet utilisera build_transcriptome.output.fasta et la liste transcrits par kallisto_quant.output donc
 # >>> bd ref + ref.mutee sera utiliser avec la liste de variants
@@ -26,11 +22,13 @@
 # snakemake --rerun-incomplete --latency-wait 60 --profile ../profile_local/
 
 
-configfile: "../profile_local/config.yaml"
+#configfile: "../profile_local/config.yaml"
+#configfile: "../profile_slurm/config.yaml"
+
 configfile: "../config/config.json"
 
 
-directory = os.path.join(config["path"]["fastq_dir"])
+directory = os.path.join(config["path"]["RNAseq_dir"])
 id_set = set()
 for nom_fichier in os.listdir(directory):
     if nom_fichier.endswith(".fastq.gz"):
@@ -45,30 +43,23 @@ include: "rules/download_genome.smk"
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
 include: "rules/variants.smk"
-#include: "rules/add_variants.smk"
+#include: "rules/bedgraph.smk"
 
 rule all:
     input:
         expand("data/qc/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/qc/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1.fq.gz", id=id_list), 
         expand("data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list), 
-        expand("data/qc_trim_galore/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
-        expand("data/qc_trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2_fastqc.html", id=id_list),
+        expand("data/qc_after_trim/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
+        expand("data/references/transcript_position.txt", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
+        expand("results/kallisto/{id}/abundance.tsv", id=id_list),
         expand("results/variants/{id}/20QC_variant.vcf", id=id_list),
-#        expand("results/dge/kallisto/{id}/abundance.tsv", id=id_list),
-#        expand("results/variants/{id}/transcrits_variants.fa", id=id_list),
-#        expand("results/{id}/filtered_transcriptome_with_mutations.fa", id=id_list)
-#        expand("results/variants/{id}/annotat_variants.vcf", id=id_list),
-#        expand("results/variants/{id}/test_transcripts.fa", id=id_list)
 rule download_genome:
     input:
-        gff3 = 'data/references/gff3/homo_sapiens.gff3',
+        gff = 'data/references/gtf/Homo_sapiens.GRCh38.110.gtf',
         genome = 'data/references/genome_fa/homo_sapiens_genome.fa',
 
 rule quantification: 
     input:
         build_transcriptome = "data/references/kallisto/transcriptome.fa",
         build_index = "data/references/kallisto/transcriptome.fa",
-        Kall_quantif = expand("results/dge/kallisto/{id}_tpm.tsv", id=id_list)  # résultat
