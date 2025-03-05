@@ -8,29 +8,29 @@ __default__:
     mail-type: FAIL
 
 fastqc:
-    cpus-per-task: 16    
-    mem: 32G
-    time: 0-0:20:00
+    cpus-per-task: 4    
+    mem: 10G
+    time: 0-0:50:00
 
 trim_reads:
-    cpus-per-task: 16
+    cpus-per-task: 6
     mem: 32G
-    time: 0-0:30:00
+    time: 0-2:00:00
 
 qc_fastq:
-    cpus-per-task: 16
-    mem: 32G
-    time: 0-0:30:00
+    cpus-per-task: 6
+    mem: 10G
+    time: 0-0:50:00
 
 star_index:
     cpus-per-task: 32   
-    mem: 70G
+    mem: 64G
     time: 0-0:45:00
 
-star_alignReads:
+star_alignreads:
     cpus-per-task: 32
-    mem: 130G
-    time: 0-1:00:00
+    mem: 120G
+    time: 0-2:00:00
 
 build_transcriptome:
     cpus-per-task: 2
@@ -38,37 +38,41 @@ build_transcriptome:
     time: 0-1:00:00
 
 kallisto_index:
-    cpus-per-task: 32
-    mem: 70G
-    time: 0-0:45:00
+    cpus-per-task: 16
+    mem: 20G
+    time: 0-0:30:00
 
 kallisto_quant:
     cpus-per-task: 32
-    mem: 130G
-    time: 0-1:00:00
+    mem: 60G
+    time: 0-3:00:00
 
 filter_abundance:
     cpus-per-task: 2
-    mem: 2G
+    mem: 8G
     time: 0-0:30:00
 
 build_filtered_transcriptome:
     cpus-per-task: 2
-    mem: 2G
+    mem: 8G
     time: 0-0:30:00
 
 call_variants:
-    cpus-per-task: 8
+    cpus-per-task: 32
+    mem: 64G
+    time: 0-5:0:00
+VCF_annotation:
+    cpus-per-task: 4
     mem: 8G
-    time: 0-0:15:00
+    time: 0-1:00:00
 
 filter_variants:
     cpus-per-task: 2
-    mem: 2G
-    time: 0-0:15:00
+    mem: 8G
+    time: 0-0:30:00
 
 
 apply_variants:
     cpus-per-task: 4
-    mem: 4G
+    mem: 8G
     time: 0-1:00:00
