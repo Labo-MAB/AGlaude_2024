@@ -6,8 +6,7 @@ rule build_transcriptome:  # Sert de transcriptome de référence avec tous les 
         genome = rules.download_human_genome.output.genome,
         gtf = rules.download_human_gtf.output.gtf
     output:
-        transcriptome = config["path"]["transcriptome"], 
-        positions = "data/references/transcript_position.txt"  
+        transcriptome = config["path"]["transcriptome"]
     conda:
         "../envs/gffread.yml"
     message:
@@ -16,7 +15,7 @@ rule build_transcriptome:  # Sert de transcriptome de référence avec tous les 
         "logs/kallisto/build_transcriptome.log"
     shell:
         """
-        gffread {input.gtf} -g {input.genome} -w {output.transcriptome} -o {output.positions}
+        gffread {input.gtf} -g {input.genome} -w {output}
         """
 
 
