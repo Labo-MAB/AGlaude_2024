@@ -1,4 +1,4 @@
-name: freebaye_env
+name: freebayes_env
 channels:
   - bioconda
   - conda-forge
@@ -7,4 +7,5 @@ dependencies:
   - freebayes
   - samtools  
   - bedtools
-  - snpeff  
+  - snpeff
+  - openjdk=17
