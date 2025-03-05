@@ -30,19 +30,16 @@ rule download_human_genome:
         """
 
 
-#rule download_human_gff3:
-#    """ Download gff3 of human genome from Ensembl """
+#rule download_snpeff_database:
+#    """Download SnpEff database for hg38"""
 #    output:
-#        gff3 = 'data/references/gff3/homo_sapiens.gff3'
+#        snpeff = "data/references/snpeff/snpEff_v5_2_hg38.zip"
 #    params:
-#        link = config['download']['human_gff3']
+#        link = config['download']['snpeff']
 #    shell:
 #        """
-#        mkdir -p data/references/gff3 && 
-#        wget -O temp.gz {params.link} && 
-#        gunzip temp.gz && 
-#        mv temp {output.gff3} &&
-#        rm temp.gz
+#        mkdir -p data/references &&
+#        module load snpeff
+#        module load java
+#        java -jar $EBROOTSNPEFF/snpEff.jar download -v hg38
 #        """
-#
-#
