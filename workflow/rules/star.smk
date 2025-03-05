@@ -11,7 +11,7 @@ rule fastqc:
         out_dir = "data/qc/{id}"
     log:
         "logs/{id}/fastqc.log"
-    threads: 16
+    threads: 32
     conda:
         "../envs/fastqc.yml" 
     shell:
@@ -28,7 +28,7 @@ rule trim_reads:
     params:
         out_dir = "data/trim_galore/{id}"
     threads:
-        16
+        8
     conda:
         "../envs/trim_galore.yml"
     log:
@@ -55,7 +55,7 @@ rule qc_fastq:# unpaired?
     log:
         "logs/{id}/FASTQC2.log"
     threads:
-        16
+        32
     conda:
         "../envs/fastqc.yml"
     shell:
@@ -76,15 +76,15 @@ rule star_index:
         fasta = rules.download_human_genome.output.genome,
         gtf = rules.download_human_gtf.output.gtf #GRCh38.p14 reference
     output:
-        chrNameLength = "data/star_index/chrNameLength.txt"
+        chrNameLength = "data/references/star_index/chrNameLength.txt"
     params:
-        dir = "data/star_index"  
+        dir = config['path']['star_index']  
     log:
         "logs/index.log"
     conda:
         "../envs/star.yml"
     threads:
-        4
+        32
     shell:
         """
         mkdir -p {params.dir} && \
@@ -112,14 +112,12 @@ rule star_alignreads:
     log:
         "logs/{id}/alignreads.log"
     threads:
-        4
+        6
     conda:
         "../envs/star.yml"
     shell:
         """
         mkdir -p {params.output_dir} && \
-        rm -rf /tmp/{wildcards.id} && \
-        mkdir -p /tmp/{wildcards.id} && \
         STAR --runMode alignReads \
             --genomeDir {params.index} \
             --readFilesIn {input.fq1} {input.fq2} \
@@ -135,7 +133,7 @@ rule star_alignreads:
             --outFilterMatchNminOverLread 0.3 \
             --outFilterMultimapNmax 100 \
             --winAnchorMultimapNmax 100 \
-            --limitBAMsortRAM 600000000000 \
+            --limitBAMsortRAM 120000000000 \
             --outTmpDir /tmp/{wildcards.id} \
             &> {log}
         """
