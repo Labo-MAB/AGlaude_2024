@@ -1,8 +1,8 @@
 name: python_env
 channels:
-  - default
   - conda-forge
   - bioconda
+  - default
 dependencies:
   - numpy=1.22.3
   - pandas=1.4.2
@@ -13,3 +13,5 @@ dependencies:
   - scikit-learn=1.0.2
   - pybedtools=0.9.0
   - pysam=0.19.1
+  - pyarrow
+  - Biopython
