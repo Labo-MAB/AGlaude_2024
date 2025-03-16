@@ -217,10 +217,10 @@ def save_mutated_transcripts(mutated_info, mutated_output_fasta, combined_output
         signature = info["signature"]
         if transcript_id in original_transcripts:
             original_record = original_transcripts[transcript_id]
-            new_id = f"mut_{transcript_id}_({signature})"
+            new_id = f"{transcript_id}_mut_({signature})"
             new_description = original_record.description  # On garde la description originale
         else:
-            new_id = f"mut_{transcript_id}_({signature})"
+            new_id = f"{transcript_id}_mut_({signature})"
             new_description = f"Mutated transcript {transcript_id}"
         mutated_record = SeqRecord(Seq(mutated_seq), id=new_id, description=new_description)
         mutated_transcripts.append(mutated_record)
