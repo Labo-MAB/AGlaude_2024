@@ -14,7 +14,10 @@
 # >>> bd ref + ref.mutee sera utiliser avec la liste de variants
 # >>> BD trad. in silico : ORFs  ATG >30codons
 
-
+#ce qu'il faut, c'est prendre les transcrits et nvx transcrits , creer un nouveau fasta manuellement combinants les variants qui seront trouvés et les renommés #on ne veut pas savoir quil y a le cancer, on le sait deja, mais 
+#quel sont les changements proteiques et quel est limpact 
+# refaire un .fasta avec les transcrits et les variants obtenus , bien identifié les variants (nom + position) Donc, on va avoir un .fasta avec tout les transcrits, mais avec les variants inclus. 
+# Dans le sens que certains transcrits auront des variants , donc faut inclure ses variants dans le fichier la liste de transcrits
 # snakemake --profile ../profile_local/ --latency-wait 3
 # snakemake --rerun-incomplete --latency-wait 60 --profile ../profile_local/
 
@@ -40,6 +43,7 @@ include: "rules/download_genome.smk"
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
 include: "rules/variants.smk"
+#include: "rules/proteomique.smk"
 #include: "rules/bedgraph.smk"
 
 rule all:
@@ -48,16 +52,17 @@ rule all:
         expand("data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list), 
         expand("data/qc_after_trim/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
         expand("data/references/transcriptome.fa", id=id_list),
-        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id = id_list),   
+        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id=id_list),   
         expand("results/kallisto/{id}/abundance.tsv", id=id_list),
         expand("results/variants/{id}/20QC_variant.vcf", id=id_list),
-        expand("results/final/{id}/mutated_transcripts.fa", id=id_list),
+        expand("results/final/{id}/filtered_transcripts.fa", id=id_list),
+#        expand("result/final/{id}/proteotome_personalised.fa", id=id_list),
 
 rule download_genome:
     input:
-        gtf = 'data/references/gtf/Homo_sapiens.GRCh38.110.gtf',
+        gtf = 'data/references/gtf/Homo_sapiens.GRCh38.113.gtf',
         genome = 'data/references/genome_fa/homo_sapiens_genome.fa',
-#        snpeff = 'data/references/snpeff/snpEff_v5_2_hg38.zip',
+#        SNPEFF_DB = 'data/references/hg38/snpEffectPredictor.bin',
 
 rule quantification: 
     input:
