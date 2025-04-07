@@ -47,6 +47,7 @@ kallisto_quant:
     mem: 60G
     time: 0-3:00:00
 
+
 filter_abundance:
     cpus-per-task: 2
     mem: 8G
@@ -57,22 +58,47 @@ build_filtered_transcriptome:
     mem: 8G
     time: 0-0:30:00
 
-call_variants:
-    cpus-per-task: 32
-    mem: 64G
-    time: 0-5:0:00
-VCF_annotation:
-    cpus-per-task: 4
-    mem: 8G
-    time: 0-1:00:00
-
-filter_variants:
+rule index_genome:
     cpus-per-task: 2
     mem: 8G
     time: 0-0:30:00
 
+rule index_bam:
+    cpus-per-task: 2
+    mem: 8G
+    time: 0-0:30:00
 
-apply_variants:
+create_targets:
+    cpus-per-task: 2
+    mem: 8G
+    time: 0-0:30:00
+
+call_variants:
+    cpus-per-task: 32
+    mem: 64G
+    time: 0-20:0:00
+    
+VCF_annotation:
+    cpus-per-task: 4
+    mem: 16G
+    time: 0-2:00:00
+
+filter_variants:
     cpus-per-task: 4
     mem: 8G
-    time: 0-1:00:00
+    time: 0-2:00:00
+
+build_exon_dataframe:
+    cpus-per-task: 4
+    mem: 8G
+    time: 0-2:00:00
+
+apply_variants:
+    cpus-per-task: 32
+    mem: 64G
+    time: 0-16:00:00
+
+filter_transcripts:
+    cpus-per-task: 16
+    mem: 8G
+    time: 0-2:00:00
