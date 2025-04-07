@@ -8,12 +8,9 @@
     "transcriptome": "data/references/transcriptome.fa"
   },
   "download": {
-    "human_gtf": "http://ftp.ensembl.org/pub/release-110/gtf/homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz",
-    "true_human_gtf": "http://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz",
-    "bob_human_gtf": "data/references/gtf/Homo_sapiens.GRCh38.110.gtf",
+    "bob_human_gtf": "http://ftp.ensembl.org/pub/release-110/gtf/homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz",
     "true_hhuman_genome_fa": "http://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
-    "human_genome_fa": "https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
-    "human_gff3": "http://ftp.ensembl.org/pub/release-113/gff3/homo_sapiens/Homo_sapiens.GRCh38.113.gff3.gz",
-    "snpeff": "https://snpeff.blob.core.windows.net/databases/v5_2/snpEff_v5_2_hg38.zip"
+    "human_gtf": "https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz",
+    "human_genome_fa": "https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
   }
 }
