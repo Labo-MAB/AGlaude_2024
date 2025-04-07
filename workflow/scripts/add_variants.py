@@ -197,7 +197,7 @@ def process_transcript(transcript_id, mutations, GTF_exons, genome, log_dir="log
     fh.close()
     return transcript_id, results
 
-def extract_genomic_sequence_parallel(transcripts_fasta, mutations_df, GTF_exons, max_workers=4):
+def extract_genomic_sequence_parallel(transcripts_fasta, mutations_df, GTF_exons, max_workers=32):
     """
     Regroupe les mutations par transcript et traite chaque transcript en parallèle.
     Retourne un dictionnaire : 
@@ -302,7 +302,7 @@ def main():
     try:
         vcf_df = read_vcf(vcf_file)
         GTF_exons = load_exons(exon_parquet)
-        mutated_info = extract_genomic_sequence_parallel(transcripts_fasta, vcf_df, GTF_exons, max_workers=4)
+        mutated_info = extract_genomic_sequence_parallel(transcripts_fasta, vcf_df, GTF_exons, max_workers=32)
         save_mutated_transcripts(mutated_info, mutated_output_fasta, combined_output_fasta, transcripts_fasta)
     except Exception as e:
         logging.critical(f"Erreur critique dans le pipeline principal: {e}")
