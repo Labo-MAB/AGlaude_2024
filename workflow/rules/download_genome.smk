@@ -1,7 +1,7 @@
 rule download_human_gtf:
     """ Download gtf of human genome from Ensembl """
     output:
-        gtf = 'data/references/gtf/Homo_sapiens.GRCh38.110.gtf'
+        gtf = 'data/references/gtf/Homo_sapiens.GRCh38.113.gtf'
     params:
         link = config['download']['human_gtf']
     shell:
@@ -33,9 +33,7 @@ rule download_human_genome:
 #rule download_snpeff_database:
 #    """Download SnpEff database for hg38"""
 #    output:
-#        snpeff = "data/references/snpeff/snpEff_v5_2_hg38.zip"
-#    params:
-#        link = config['download']['snpeff']
+#        SNPEFF_DB = 'data/references/hg38/snpEffectPredictor.bin'
 #    shell:
 #        """
 #        mkdir -p data/references &&
