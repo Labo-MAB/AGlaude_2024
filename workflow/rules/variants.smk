@@ -1,18 +1,40 @@
-rule create_targets:
+rule index_genome:
     input:
         genome=rules.download_human_genome.output.genome
+    output:
+        fai="data/references/genome_fa/homo_sapiens_genome.fa.fai"
+    conda:
+        "../envs/freebayes.yml"
+    shell:
+        "samtools faidx {input.genome}"
+
+rule create_targets:
+    input:
+        fai=rules.index_genome.output.fai
     output:
         targets="results/variants/{id}/targets.txt"
     conda:
         "../envs/freebayes.yml"
     shell:
-        "../script/fasta_generate_regions.py {input.genome}.fai 1000000 > {output.targets}"
-        
+        "scripts/fasta_generate_regions.py {input.fai} 1000000 > {output.targets}"
+
+rule index_bam:
+    input:
+        bam=rules.star_alignreads.output.bam
+    output:
+        bai="results/STAR/{id}/Aligned.sortedByCoord.out.bam.bai"
+    conda:
+        "../envs/freebayes.yml"
+    shell:
+        "samtools index {input.bam}"
+
 rule call_variants:
     input:
         bam=rules.star_alignreads.output.bam,
+        bai=rules.index_bam.output.bai,
         genome=rules.download_human_genome.output.genome,
-        targets="results/variants/{id}/targets.txt"
+        fai=rules.index_genome.output.fai,
+        targets=rules.create_targets.output.targets
     output:
         vcf="results/variants/{id}/variants.vcf"
     params:
@@ -28,62 +50,8 @@ rule call_variants:
         freebayes-parallel {input.targets} {threads} -f {input.genome} {input.bam} > {output.vcf} 2> {log}
         """
 
-#rule call_variants:
-#    input:
-#        bam=rules.star_alignreads.output.bam,
-#        genome=rules.download_human_genome.output.genome,
-#        gtf=rules.download_human_gtf.output.gtf
-#    output:
-#        vcf="results/variants/{id}/variants.vcf",
-#    params:
-#        min_alternate_count=5,
-#        min_coverage=10,
-#    conda:
-#        "../envs/freebayes.yml"
-#    log:
-#        "logs/freebayes_{id}/freebayes.log"
-#    threads: 8  
-#    shell: 
-#        "freebayes -f {input.genome} {input.bam} > {output.vcf} 2> {log}"
-#
-
-        #java -jar {input.snpeff} -hgvsTrId -geneId hg38 {output.vcf} -o vcf > {output.annotated_vcf} 2>> {log}  
-        #"""
-        #set -e  # Arrête l'exécution en cas d'erreur
-        ## Appel de variants avec FreeBayes
-        #freebayes -f {input.genome} \
-#
-        #    {input.bam} \
-        #    > {output.vcf} 2>> {log}
-        #"""
-#rule VCF_annotation:
-#    input:
-#        vcf=rules.call_variants.output.vcf,
-#        SNPEFF_DB=rules.download_snpeff_database.output.SNPEFF_DB
-#    output:
-#        annotated_vcf="results/variants/{id}/variants_annotated.vcf"
-#    params:
-#        SNPEFF_JAR="$EBROOTSNPEFF/snpEff.jar",
-#        CONFIG="data/references/snpEff.config" # a corriger
-#    #conda:
-#    #    "../envs/freebayes.yml"
-#    log:
-#        "logs/freebayes_{id}/annotation.log"
-#    threads: 8  
-#    shell: 
-#        """
-#        module load snpeff
-#        module load java
-#        java -jar {params.SNPEFF_JAR} -c {params.CONFIG} -hgvsTrId -geneId hg38 -noDownload {input.vcf} > {output.annotated_vcf} 2> {log}
-#        """
-#
-#        #snpeff -hgvsTrId -geneId hg38 {input.vcf} > {output.annotated_vcf} 2>> {log}
-#
-#
-
-rule filter_variants: # QC des mutants avec trashold de 20 
+rule filter_variants:
     input:
-#        vcf = rules.VCF_annotation.output.annotated_vcf  
         vcf=rules.call_variants.output.vcf
     output:
         vcf_filtered="results/variants/{id}/20QC_variant.vcf" 
@@ -99,7 +67,7 @@ rule build_exon_dataframe:
     input:
         gtf=rules.download_human_gtf.output.gtf  
     output:
-        parquet="results/exon_data.parquet"  
+        parquet="data/references/exon_data.parquet"  
     conda:
         "../envs/python.yml"  
     script:
@@ -108,7 +76,6 @@ rule build_exon_dataframe:
 rule apply_variants:
     input:
         exon_parquet=rules.build_exon_dataframe.output.parquet,
-        #fasta=rules.download_human_genome.output.genome,  
         vcf=rules.filter_variants.output.vcf_filtered,  
         transcripts_fasta=rules.build_filtered_transcriptome.output.transcriptome_final_custom
     output:
@@ -120,6 +87,7 @@ rule apply_variants:
         "../scripts/add_variants.py" 
 
 rule filter_transcripts:
+    "Fichier de sortie pour la portion proteomique"
     input:
         combined_fasta="results/final/{id}/combined_transcripts.fa"
     output:
