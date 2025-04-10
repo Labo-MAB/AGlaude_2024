@@ -77,11 +77,6 @@ call_variants:
     cpus-per-task: 32
     mem: 64G
     time: 0-20:0:00
-    
-VCF_annotation:
-    cpus-per-task: 4
-    mem: 16G
-    time: 0-2:00:00
 
 filter_variants:
     cpus-per-task: 4
@@ -89,16 +84,56 @@ filter_variants:
     time: 0-2:00:00
 
 build_exon_dataframe:
-    cpus-per-task: 4
-    mem: 8G
-    time: 0-2:00:00
+    cpus-per-task: 1
+    mem: 4G
+    time: "00:10:00"
 
-apply_variants:
+split_vcf_1_2:
+    cpus-per-task: 1
+    mem: 8G
+    time: "00:15:00"
+
+split_vcf_3_4_5_6:
+    cpus-per-task: 1
+    mem: 8G
+    time: "00:15:00"
+
+split_vcf_7_to_15:
+    cpus-per-task: 1
+    mem: 8G
+    time: "00:15:00"
+
+split_vcf_rest:
+    cpus-per-task: 1
+    mem: 12G
+    time: "00:20:00"
+
+apply_variants12:
     cpus-per-task: 32
     mem: 64G
-    time: 0-16:00:00
+    time: "08:00:00"
+
+apply_variants3456:
+    cpus-per-task: 32
+    mem: 64G
+    time: "08:00:00"
+
+apply_variants7to15:
+    cpus-per-task: 32
+    mem: 64G
+    time: "08:00:00"
+
+apply_variants_rest:
+    cpus-per-task: 32
+    mem: 64G
+    time: "08:00:00"
+
+fusion_transcripts:
+    cpus-per-task: 8
+    mem: 16G
+    time: "00:30:00"
 
 filter_transcripts:
-    cpus-per-task: 16
+    cpus-per-task: 4
     mem: 8G
-    time: 0-2:00:00
+    time: "00:20:00"
