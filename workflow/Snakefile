@@ -27,36 +27,33 @@
 
 configfile: "../config/config.json"
 
-
-directory = os.path.join(config["path"]["RNAseq_dir"])
+rna_dir = os.path.join(config["path"]["RNAseq_dir"])
 id_set = set()
-for nom_fichier in os.listdir(directory):
+for nom_fichier in os.listdir(rna_dir):
     if nom_fichier.endswith(".fastq.gz"):
         parties = nom_fichier.split('_')
         if len(parties) > 8:  
-            id_part = "_".join(parties[:8])  
-            id_set.add(id_part)  
+            id_part = "_".join(parties[:8])
+            id_set.add(id_part)
+id_list = list(id_set)
 
-id_list = list(id_set) 
-print(id_list)
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
 include: "rules/variants.smk"
+include: "rules/mutation_parallel.smk"
 #include: "rules/proteomique.smk"
-#include: "rules/bedgraph.smk"
 
 rule all:
     input:
         expand("data/qc/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list), 
+        expand("data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),
         expand("data/qc_after_trim/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
-        expand("data/references/transcriptome.fa", id=id_list),
-        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id=id_list),   
+        expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id=id_list),
         expand("results/kallisto/{id}/abundance.tsv", id=id_list),
         expand("results/variants/{id}/20QC_variant.vcf", id=id_list),
-        expand("results/final/{id}/filtered_transcripts.fa", id=id_list),
-#        expand("result/final/{id}/proteotome_personalised.fa", id=id_list),
+        expand("results/final/{id}/combined_transcripts.fa", id=id_list),
+        expand("results/final/{id}/filtered_transcripts.fa", id=id_list)
 
 rule download_genome:
     input:
