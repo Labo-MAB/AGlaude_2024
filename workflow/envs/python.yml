@@ -15,3 +15,4 @@ dependencies:
   - pysam=0.19.1
   - pyarrow
   - Biopython
+  - bcftools
