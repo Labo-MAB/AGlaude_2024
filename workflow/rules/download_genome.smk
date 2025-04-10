@@ -28,16 +28,3 @@ rule download_human_genome:
         mv temp_genome {output.genome} &&
         rm -f temp_genome.gz
         """
-
-
-#rule download_snpeff_database:
-#    """Download SnpEff database for hg38"""
-#    output:
-#        SNPEFF_DB = 'data/references/hg38/snpEffectPredictor.bin'
-#    shell:
-#        """
-#        mkdir -p data/references &&
-#        module load snpeff
-#        module load java
-#        java -jar $EBROOTSNPEFF/snpEff.jar download -v hg38
-#        """
