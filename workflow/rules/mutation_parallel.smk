@@ -19,6 +19,8 @@ rule split_vcf_1_2:
         vcf="results/{id}/split_vcf/1_2.vcf"
     params:
         chromosomes=["1", "2"]
+    conda:
+        "../envs/bcftools.yml"  
     script:
         "../scripts/split_vcf_by_group.py"
 
@@ -29,6 +31,8 @@ rule split_vcf_3_4_5_6:
         vcf="results/{id}/split_vcf/3_4_5_6.vcf"
     params:
         chromosomes=["3", "4", "5", "6"]
+    conda:
+        "../envs/bcftools.yml"
     script:
         "../scripts/split_vcf_by_group.py"
 
@@ -39,6 +43,8 @@ rule split_vcf_7_to_15:
         vcf="results/{id}/split_vcf/7_to_15.vcf"
     params:
         chromosomes=CHR_7_TO_15
+    conda:
+        "../envs/bcftools.yml"
     script:
         "../scripts/split_vcf_by_group.py"
 
@@ -50,6 +56,8 @@ rule split_vcf_rest:
     params:
         chromosomes=CHR_16_TO_22_XYMT,
         include_rest=True
+    conda:
+        "../envs/bcftools.yml"
     script:
         "../scripts/split_vcf_by_group.py"
 
