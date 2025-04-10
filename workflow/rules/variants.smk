@@ -61,38 +61,3 @@ rule filter_variants:
         "logs/freebayes_{id}/filter_variants.log"
     shell:
         "bcftools filter -s LowQual -e 'QUAL<20' {input.vcf} -o {output.vcf_filtered} > {log} 2>&1"
-
-rule build_exon_dataframe:
-    """Extracts exons from the GTF file and saves them in a Parquet file."""
-    input:
-        gtf=rules.download_human_gtf.output.gtf  
-    output:
-        parquet="data/references/exon_data.parquet"  
-    conda:
-        "../envs/python.yml"  
-    script:
-        "../scripts/build_exon_dataframe.py"
-
-rule apply_variants:
-    input:
-        exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.filter_variants.output.vcf_filtered,  
-        transcripts_fasta=rules.build_filtered_transcriptome.output.transcriptome_final_custom
-    output:
-        mutated_output_fasta="results/final/{id}/mutated_transcripts.fa",
-        combined_output_fasta="results/final/{id}/combined_transcripts.fa"
-    conda:
-        "../envs/python.yml"  
-    script:
-        "../scripts/add_variants.py" 
-
-rule filter_transcripts:
-    "Fichier de sortie pour la portion proteomique"
-    input:
-        combined_fasta="results/final/{id}/combined_transcripts.fa"
-    output:
-        filtered_fasta="results/final/{id}/filtered_transcripts.fa"
-    conda:
-        "../envs/python.yml"
-    script:
-        "../scripts/filter_transcripts.py"
