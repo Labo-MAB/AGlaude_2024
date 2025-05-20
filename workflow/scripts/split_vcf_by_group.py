@@ -1,39 +1,28 @@
-#!/usr/bin/env python3
 
 import os
-import subprocess
+import gzip
 
-# Entrées et sorties fournies automatiquement par Snakemake
 vcf_file = snakemake.input.vcf
-output_path = snakemake.output.vcf
-chromosomes = snakemake.params.chromosomes
+output_path = snakemake.output.vcf_split
+chromosomes = set(snakemake.params.chromosomes)
 include_rest = snakemake.params.get("include_rest", False)
 
-# S'assurer que le dossier de sortie existe
+# Créer le dossier de sortie si besoin
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-# Extraire les chromosomes présents dans le VCF
-all_chroms = subprocess.check_output(
-    f"bcftools query -f '%CHROM\\n' {vcf_file} | sort -u", shell=True
-).decode().split()
+# Gestion .vcf vs .vcf.gz
+def open_vcf(path):
+    return gzip.open(path, 'rt') if path.endswith(".gz") else open(path, 'r')
 
-# Ajout automatique des chromosomes non listés
-explicit_chroms = set(chromosomes)
-if include_rest:
-    special_chroms = [c for c in all_chroms if c not in explicit_chroms]
-    chromosomes += special_chroms
-
-# Extraire l'en-tête du VCF
-header = subprocess.check_output(f"grep '^#' {vcf_file}", shell=True).decode()
-
-# Préparer la commande pour extraire les chromosomes
-chrom_args = ' '.join([f"-r {c}" for c in chromosomes])
-cmd = f"bcftools view {chrom_args} {vcf_file} | grep -v '^#'"
-body = subprocess.check_output(cmd, shell=True).decode()
-
-# Écrire le fichier final
-with open(output_path, "w") as f:
-    f.write(header)
-    f.write(body)
-
-print(f"[Split] {output_path} écrit avec {len(chromosomes)} chromosomes.")
+with open_vcf(vcf_file) as vcf_in, open(output_path, 'w') as vcf_out:
+    for line in vcf_in:
+        if line.startswith('#'):
+            vcf_out.write(line)
+        else:
+            chrom = line.split('\t')[0]
+            if include_rest:
+                if chrom not in chromosomes:
+                    vcf_out.write(line)
+            else:
+                if chrom in chromosomes:
+                    vcf_out.write(line)
