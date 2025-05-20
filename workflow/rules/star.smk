@@ -98,14 +98,16 @@ rule star_index:
         """
 
 rule star_alignreads:
-    """ Generates a bam file using STAR """
+    """ Generates a bam file using STAR
+        unimapping stric
+    """
     input:
         idx = rules.star_index.output,
         fq1 = rules.trim_reads.output.gal_trim1,
         fq2 = rules.trim_reads.output.gal_trim2
     output:
         bam = "results/STAR/{id}/Aligned.sortedByCoord.out.bam",
-        bam_logs = "results/STAR/{id}/Log.final.out"  #(temp)
+        bam_logs = "results/STAR/{id}/Log.final.out" 
     params:
         index = config['path']['star_index'],
         output_dir = "results/STAR/{id}/"
@@ -129,10 +131,10 @@ rule star_alignreads:
             --outSAMunmapped None \
             --outSAMtype BAM SortedByCoordinate \
             --outFileNamePrefix {params.output_dir} \
-            --outFilterScoreMinOverLread 0.3 \
-            --outFilterMatchNminOverLread 0.3 \
-            --outFilterMultimapNmax 100 \
-            --winAnchorMultimapNmax 100 \
+            --outFilterScoreMinOverLread 0.66 \
+            --outFilterMatchNminOverLread 0.66 \
+            --outFilterMultimapNmax 1 \
+            --winAnchorMultimapNmax 1 \
             --limitBAMsortRAM 120000000000 \
             --outTmpDir /tmp/{wildcards.id} \
             &> {log}
