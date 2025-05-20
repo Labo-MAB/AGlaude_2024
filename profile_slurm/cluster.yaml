@@ -47,7 +47,6 @@ kallisto_quant:
     mem: 60G
     time: 0-3:00:00
 
-
 filter_abundance:
     cpus-per-task: 2
     mem: 8G
@@ -76,64 +75,100 @@ create_targets:
 call_variants:
     cpus-per-task: 32
     mem: 64G
-    time: 0-20:0:00
+    time: 0-02:00:00
 
 filter_variants:
-    cpus-per-task: 4
-    mem: 8G
-    time: 0-2:00:00
+    cpus-per-task: 1
+    mem: 1G
+    time: 0-00:03:00
 
 build_exon_dataframe:
     cpus-per-task: 1
-    mem: 4G
-    time: "00:10:00"
+    mem: 1G
+    time: "00:02:00"
 
-split_vcf_1_2:
+split_transcripts_all:
     cpus-per-task: 1
-    mem: 8G
-    time: "00:15:00"
+    mem: 1G
+    time: "00:03:00"
 
-split_vcf_3_4_5_6:
+split_vcf_1_to_2:
     cpus-per-task: 1
-    mem: 8G
-    time: "00:15:00"
+    mem: 1G
+    time: "00:03:00"
 
-split_vcf_7_to_15:
+split_vcf_3_to_4:
     cpus-per-task: 1
-    mem: 8G
-    time: "00:15:00"
+    mem: 1G
+    time: "00:03:00"
+
+split_vcf_5_to_7:
+    cpus-per-task: 1
+    mem: 1G
+    time: "00:03:00"
+
+split_vcf_7_to_10:
+    cpus-per-task: 1
+    mem: 1G
+    time: "00:03:00"
+
+split_vcf_10_to_13:
+    cpus-per-task: 1
+    mem: 1G
+    time: "00:03:00"
+
+split_vcf_14_to_18:
+    cpus-per-task: 1
+    mem: 1G
+    time: "00:03:00"
 
 split_vcf_rest:
     cpus-per-task: 1
-    mem: 12G
-    time: "00:20:00"
+    mem: 1G
+    time: "00:03:00"
 
-apply_variants12:
-    cpus-per-task: 32
-    mem: 64G
-    time: "08:00:00"
+apply_variants_1_to_2:
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-12:00:00"
 
-apply_variants3456:
-    cpus-per-task: 32
-    mem: 64G
-    time: "08:00:00"
+apply_variants_3_to_4:
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-12:00:00"
 
-apply_variants7to15:
-    cpus-per-task: 32
-    mem: 64G
-    time: "08:00:00"
+apply_variants_5_to_7:
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-14:00:00"
+
+apply_variants_7_to_10:
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-10:00:00"
+
+apply_variants_10_to_13:
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-10:00:00"
+
+apply_variants_14_to_18:
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-10:00:00"
 
 apply_variants_rest:
-    cpus-per-task: 32
-    mem: 64G
-    time: "08:00:00"
+    cpus-per-task: 12
+    mem: 72G
+    time: "0-10:00:00"
+
 
 fusion_transcripts:
-    cpus-per-task: 8
-    mem: 16G
-    time: "00:30:00"
+    cpus-per-task: 1
+    mem: 4G
+    time: "00:05:00"
 
 filter_transcripts:
-    cpus-per-task: 4
-    mem: 8G
-    time: "00:20:00"
+    cpus-per-task: 1
+    mem: 4G
+    time: "00:05:00"
