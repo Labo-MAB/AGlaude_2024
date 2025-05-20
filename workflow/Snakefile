@@ -1,4 +1,4 @@
-# >>> Explication de l'outil 
+# >>> Explication du pipeline 
 # 1) star.smk permet de déterminer le QC , trimming et QC du trimming. Puis, prend genome reference du download_genome.smk pour creer lindex de star
 # >>> Index star  >>> index du genome de reference (ENSEMBL) pour eviter de lire le genome brut 
 # >>> Star_alignement >>> aligne les FASTQ du trimming sur le genome de reference (compare sequences de lecture avec celle du genome pour trouver correspondances optimales) >>> output = .Bam
@@ -40,9 +40,11 @@ id_list = list(id_set)
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
 include: "rules/kallisto.smk"
-include: "rules/variants.smk"
-include: "rules/mutation_parallel.smk"
-#include: "rules/proteomique.smk"
+include: "rules/calling_variants.smk"
+include: "rules/variant_split_apply_merge.smk"
+include: "rules/DRPs.smk"
+#include: "rules/struct_variation.smk"
+#include: "rules/post_FOMOnet.smk"
 
 rule all:
     input:
@@ -52,8 +54,11 @@ rule all:
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id=id_list),
         expand("results/kallisto/{id}/abundance.tsv", id=id_list),
         expand("results/variants/{id}/20QC_variant.vcf", id=id_list),
+        expand("results/variants/{id}/split_vcf/1_to_2.vcf", id=id_list),
         expand("results/final/{id}/combined_transcripts.fa", id=id_list),
-        expand("results/final/{id}/filtered_transcripts.fa", id=id_list)
+        expand("results/final/{id}/filtered_transcripts.fa", id=id_list),
+        expand("results/DRP/{id}/figures_WES/strong_evidences_compilation_T.pkl", id=id_list)
+
 
 rule download_genome:
     input:
