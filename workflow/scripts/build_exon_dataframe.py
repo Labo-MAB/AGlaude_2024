@@ -25,9 +25,15 @@ def extract_exons(gtf_file, output_parquet):
         exons,
         columns=['chromosome', 'start', 'end', 'strand', 'gene_name', 'transcript_id', 'gene_biotype']
     )
-    exons_df[['start', 'end']] = exons_df[['start', 'end']].astype(np.uint32)# Optimisation 
+    exons_df['exon_number'] = (
+        exons_df.sort_values(['transcript_id', 'start'])
+                .groupby('transcript_id')
+                .cumcount()
+    )
+    exons_df[['start', 'end']] = exons_df[['start', 'end']].astype(np.uint32)
     exons_df['exon_interval'] = pd.IntervalIndex.from_arrays(exons_df['start'], exons_df['end'], closed="both")
     exons_df.to_parquet(output_parquet, index=False)
+
 
 
 def main():
