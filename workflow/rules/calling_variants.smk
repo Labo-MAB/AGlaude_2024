@@ -38,7 +38,7 @@ rule call_variants:
     output:
         vcf = "results/variants/{id}/variants.vcf"
     params:
-        min_alternate_count = 5,            #Exige au moins 5 lectures supportant l'allele alternatif (reduit faux positif)
+        min_alternate_count = 10,            #Exige au moins 10 lectures supportant l'allele alternatif (reduit faux positif)
         min_coverage = 10,                  # couverture min de 10reads a  une position pour etre positif
         min_base_quality = 20,              # ignore Q phred <20 (≥ 1% erreur) lors des appels
         min_mapping_quality = 30,           # lecture bien alignée MAPQ = 30 (1/1000 erreur)
@@ -65,7 +65,7 @@ rule filter_variants:
     Filtration des variants FreeBayes :
     - QUAL <20 : moins de 99% de confiance (Phred)
     - FORMAT/DP <5 : profondeur trop faible pour un appel fiable
-    - AO <3 : trop peu de lectures supportant l’allèle alternatif
+    - AO <10 : au moins 10 lectures supportant l’allèle alternatif
     """
     input:
         vcf = rules.call_variants.output.vcf
@@ -77,8 +77,9 @@ rule filter_variants:
         "logs/freebayes_{id}/filter_variants.log"
     shell:
         """
-        bcftools filter -s LowQual -e 'QUAL<20 || INFO/DP<5 || INFO/AO<3' {input.vcf} |
+        bcftools filter -s LowQual -e 'QUAL<20 || INFO/DP<5 || INFO/AO<10' {input.vcf} |
         bcftools view -f PASS > {output.vcf_filtered} 2> {log}
         """
+
 
 #        "bcftools filter -s LowQual -e 'QUAL<20' {input.vcf} -o {output.vcf_filtered} > {log} 2>&1"
