@@ -83,92 +83,57 @@ filter_variants:
     time: 0-00:03:00
 
 build_exon_dataframe:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:02:00"
+  cpus-per-task: 1
+  mem: 8G
+  time: "00:10:00"
+
+compress_vcf_filtered:
+  cpus-per-task: 1
+  mem: 2G
+  time: "00:05:00"
 
 split_transcripts_all:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
+  cpus-per-task: 1
+  mem: 6G
+  time: "00:30:00"
 
-split_vcf_1_to_2:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
+split_vcf_1_to_9:
+  cpus-per-task: 1
+  mem: 4G
+  time: "00:05:00"
 
-split_vcf_3_to_4:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
-
-split_vcf_5_to_7:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
-
-split_vcf_7_to_10:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
-
-split_vcf_10_to_13:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
-
-split_vcf_14_to_18:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
+split_vcf_10_to_19:
+  cpus-per-task: 1
+  mem: 4G
+  time: "00:05:00"
 
 split_vcf_rest:
-    cpus-per-task: 1
-    mem: 1G
-    time: "00:03:00"
+  cpus-per-task: 1
+  mem: 2G
+  time: "00:05:00"
 
-apply_variants_1_to_2:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-12:00:00"
+apply_variants_1_to_9:
+  cpus-per-task: 2
+  mem: 20G
+  time: "0-00:15:00"
 
-apply_variants_3_to_4:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-12:00:00"
-
-apply_variants_5_to_7:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-14:00:00"
-
-apply_variants_7_to_10:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-10:00:00"
-
-apply_variants_10_to_13:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-10:00:00"
-
-apply_variants_14_to_18:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-10:00:00"
+apply_variants_10_to_19:
+  cpus-per-task: 2
+  mem: 20G
+  time: "0-00:15:00"
 
 apply_variants_rest:
-    cpus-per-task: 12
-    mem: 72G
-    time: "0-10:00:00"
-
+  cpus-per-task: 2
+  mem: 20G
+  time: "0-00:15:00"
 
 fusion_transcripts:
-    cpus-per-task: 1
-    mem: 4G
-    time: "00:05:00"
+  cpus-per-task: 2
+  mem: 8G
+  time: "00:20:00"
 
 filter_transcripts:
-    cpus-per-task: 1
-    mem: 4G
-    time: "00:05:00"
+  cpus-per-task: 1
+  mem: 4G
+  time: "00:05:00"
+
