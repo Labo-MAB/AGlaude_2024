@@ -1,19 +1,28 @@
-CHR_10_TO_13 = [str(c) for c in range(10, 14)]
-CHR_14_TO_18 = [str(c) for c in range(14, 19)]
-CHR_1_TO_18 = [str(c) for c in range(1, 19)]
+CHR_1_TO_9 = [str(c) for c in range(1, 10)]
+CHR_10_TO_19 = [str(c) for c in range(10, 20)]
+CHR_1_TO_19 = [str(c) for c in range(1, 20)]
 
 rule build_exon_dataframe:
-    """Extracts exons from the GTF file and saves them in a Parquet file."""
+    """
+    Extrait les exons du GTF, les écrit en Parquet,
+    et génère les fichiers pkl pour le génome et les arbres d'intervalles.
+    """
     input:
-        gtf=rules.download_human_gtf.output.gtf  
+        gtf=rules.download_human_gtf.output.gtf,
+        transcripts_fasta=rules.build_filtered_transcriptome.output.transcriptome_final_custom
     output:
-        parquet="data/references/exon_data.parquet"  
+        parquet="data/references/{id}/exon_data.parquet",
+        genome_pkl="data/references/{id}/genome_dict.pkl",
+        tree_pkl="data/references/{id}/trees.pkl"
     conda:
-        "../envs/python.yml"  
+        "../envs/python.yml"
+    log:
+        "logs/build_exon_{id}.log"
     script:
         "../scripts/build_exon_dataframe.py"
 
 rule compress_vcf_filtered:
+    """Compress and index VCF file."""
     input:
         vcf=rules.filter_variants.output.vcf_filtered
     output:
@@ -27,13 +36,12 @@ rule compress_vcf_filtered:
         """
 
 rule split_transcripts_all:
+    """Split transcripts by chromosome groups."""
     input:
         transcripts_fasta=rules.build_filtered_transcriptome.output.transcriptome_final_custom,
         exon_parquet=rules.build_exon_dataframe.output.parquet
     output:
-        expand("results/variants/{{id}}/split_transcripts/{group}_transcripts.fa", group=[
-            "1_to_2", "3_to_4", "5_to_7", "7_to_10", "10_to_13", "14_to_18", "rest"
-        ])
+        expand("results/variants/{{id}}/split_transcripts/{group}_transcripts.fa", group=["1_to_9", "10_to_19", "rest"])
     conda:
         "../envs/python.yml"
     shell:
@@ -43,168 +51,84 @@ rule split_transcripts_all:
             {input.transcripts_fasta} {input.exon_parquet} results/variants/{wildcards.id}/split_transcripts
         """
 
-rule split_vcf_1_to_2:
+rule split_vcf_1_to_9:
+    """Split VCF file for chromosomes 1 to 10."""
     input:
         vcf=rules.compress_vcf_filtered.output.vcf_gz
     output:
-        vcf_split="results/variants/{id}/split_vcf/1_to_2.vcf"
+        vcf_split="results/variants/{id}/split_vcf/1_to_9.vcf"
     params:
-        chromosomes=["1", "2"]
-    conda:
-        "../envs/bcftools.yml"  
-    script:
-        "../scripts/split_vcf_by_group.py"
-
-rule split_vcf_3_to_4:
-    input:
-        vcf=rules.compress_vcf_filtered.output.vcf_gz
-    output:
-        vcf_split="results/variants/{id}/split_vcf/3_to_4.vcf"
-    params:
-        chromosomes=["3", "4"]
-    conda:
-        "../envs/bcftools.yml"  
-    script:
-        "../scripts/split_vcf_by_group.py"
-
-rule split_vcf_5_to_7:
-    input:
-        vcf=rules.compress_vcf_filtered.output.vcf_gz
-    output:
-        vcf_split="results/variants/{id}/split_vcf/5_to_7.vcf"
-    params:
-        chromosomes=["5", "6", "7"]
+        chromosomes=CHR_1_TO_9
     conda:
         "../envs/bcftools.yml"
     script:
         "../scripts/split_vcf_by_group.py"
 
-rule split_vcf_7_to_10:
+rule split_vcf_10_to_19:
+    """Split VCF file for chromosomes 10 to 19."""
     input:
         vcf=rules.compress_vcf_filtered.output.vcf_gz
     output:
-        vcf_split="results/variants/{id}/split_vcf/7_to_10.vcf"
+        vcf_split="results/variants/{id}/split_vcf/10_to_19.vcf"
     params:
-        chromosomes=["7", "8", "9", "10"]
+        chromosomes=CHR_10_TO_19
     conda:
         "../envs/bcftools.yml"
     script:
         "../scripts/split_vcf_by_group.py"
 
-rule split_vcf_10_to_13:
-    input:
-        vcf=rules.compress_vcf_filtered.output.vcf_gz
-    output:
-        vcf_split="results/variants/{id}/split_vcf/10_to_13.vcf"
-    params:
-        chromosomes=CHR_10_TO_13
-    conda:
-        "../envs/bcftools.yml"
-    script:
-        "../scripts/split_vcf_by_group.py"
-
-rule split_vcf_14_to_18:
-    input:
-        vcf=rules.compress_vcf_filtered.output.vcf_gz
-    output:
-        vcf_split="results/variants/{id}/split_vcf/14_to_18.vcf"
-    params:
-        chromosomes=CHR_14_TO_18
-    conda:
-        "../envs/bcftools.yml"
-    script:
-        "../scripts/split_vcf_by_group.py"
-        
 rule split_vcf_rest:
+    """Split VCF file for rest of the chromosomes (non 1-19)."""
     input:
         vcf=rules.compress_vcf_filtered.output.vcf_gz
     output:
         vcf_split="results/variants/{id}/split_vcf/rest.vcf"
     params:
-        chromosomes=CHR_1_TO_18,
+        chromosomes=CHR_1_TO_19,
         include_rest=True
     conda:
         "../envs/bcftools.yml"
     script:
         "../scripts/split_vcf_by_group.py"
 
-rule apply_variants_1_to_2:
+rule apply_variants_1_to_9:
+    """Apply variants from chr 1 to 9."""
     input:
         exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.split_vcf_1_to_2.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/1_to_2_transcripts.fa"
+        vcf=rules.split_vcf_1_to_9.output.vcf_split,
+        transcripts_fasta="results/variants/{id}/split_transcripts/1_to_9_transcripts.fa",
+        genome_pkl = "data/references/{id}/genome_dict.pkl",  
+        tree_pkl = "data/references/{id}/trees.pkl"           
     output:
-        mutated_output_fasta="results/final/{id}/1_to_4_mutated_transcripts.fa"
+        mutated_output_fasta="results/final/{id}/1_to_9_mutated_transcripts.fa"
     conda:
         "../envs/python.yml"
     script:
         "../scripts/add_variants.py"
 
-rule apply_variants_3_to_4:
+rule apply_variants_10_to_19:
+    """Apply variants from chr 10 to 19."""
     input:
         exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.split_vcf_3_to_4.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/1_to_2_transcripts.fa"
+        vcf=rules.split_vcf_10_to_19.output.vcf_split,
+        transcripts_fasta="results/variants/{id}/split_transcripts/10_to_19_transcripts.fa",
+        genome_pkl = "data/references/{id}/genome_dict.pkl",  
+        tree_pkl = "data/references/{id}/trees.pkl"     
     output:
-        mutated_output_fasta="results/final/{id}/1_to_4_mutated_transcripts.fa"
-    conda:
-        "../envs/python.yml"
-    script:
-        "../scripts/add_variants.py"
-
-rule apply_variants_5_to_7:
-    input:
-        exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.split_vcf_5_to_7.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/5_to_7_transcripts.fa"
-    output:
-        mutated_output_fasta="results/final/{id}/5_to_7_mutated_transcripts.fa"
-    conda:
-        "../envs/python.yml"
-    script:
-        "../scripts/add_variants.py"
-
-rule apply_variants_7_to_10:
-    input:
-        exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.split_vcf_7_to_10.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/7_to_10_transcripts.fa"
-    output:
-        mutated_output_fasta="results/final/{id}/7_to_10_mutated_transcripts.fa"
-    conda:
-        "../envs/python.yml"
-    script:
-        "../scripts/add_variants.py"
-
-rule apply_variants_10_to_13:
-    input:
-        exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.split_vcf_10_to_13.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/10_to_13_transcripts.fa"
-    output:
-        mutated_output_fasta="results/final/{id}/10_to_13_mutated_transcripts.fa"
-    conda:
-        "../envs/python.yml"
-    script:
-        "../scripts/add_variants.py"
-
-rule apply_variants_14_to_18:
-    input:
-        exon_parquet=rules.build_exon_dataframe.output.parquet,
-        vcf=rules.split_vcf_14_to_18.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/14_to_18_transcripts.fa"
-    output:
-        mutated_output_fasta="results/final/{id}/14_to_18_mutated_transcripts.fa"
+        mutated_output_fasta="results/final/{id}/10_to_19_mutated_transcripts.fa"
     conda:
         "../envs/python.yml"
     script:
         "../scripts/add_variants.py"
 
 rule apply_variants_rest:
+    """Apply variants to the rest of the chromosomes."""
     input:
         exon_parquet=rules.build_exon_dataframe.output.parquet,
         vcf=rules.split_vcf_rest.output.vcf_split,
-        transcripts_fasta="results/variants/{id}/split_transcripts/rest_transcripts.fa"
+        transcripts_fasta="results/variants/{id}/split_transcripts/rest_transcripts.fa",
+        genome_pkl = "data/references/{id}/genome_dict.pkl",  
+        tree_pkl = "data/references/{id}/trees.pkl"     
     output:
         mutated_output_fasta="results/final/{id}/rest_mutated_transcripts.fa"
     conda:
@@ -212,16 +136,12 @@ rule apply_variants_rest:
     script:
         "../scripts/add_variants.py"
 
-
 rule fusion_transcripts:
+    """Merge all mutated transcript FASTAs with full transcriptome."""
     input:
-        mutated_output_fasta1=rules.apply_variants_1_to_2.output.mutated_output_fasta,
-        mutated_output_fasta2=rules.apply_variants_3_to_4.output.mutated_output_fasta,
-        mutated_output_fasta3=rules.apply_variants_5_to_7.output.mutated_output_fasta,
-        mutated_output_fasta4=rules.apply_variants_7_to_10.output.mutated_output_fasta,
-        mutated_output_fasta5=rules.apply_variants_10_to_13.output.mutated_output_fasta,
-        mutated_output_fasta6=rules.apply_variants_14_to_18.output.mutated_output_fasta,
-        mutated_output_fasta7=rules.apply_variants_rest.output.mutated_output_fasta,
+        mutated_output_fasta1=rules.apply_variants_1_to_9.output.mutated_output_fasta,
+        mutated_output_fasta2=rules.apply_variants_10_to_19.output.mutated_output_fasta,
+        mutated_output_fasta3=rules.apply_variants_rest.output.mutated_output_fasta,
         transcripts_fasta=rules.build_filtered_transcriptome.output.transcriptome_final_custom
     output:
         combined_transcripts="results/final/{id}/combined_transcripts.fa"
@@ -231,7 +151,7 @@ rule fusion_transcripts:
         "../scripts/combine_transcripts.py"
 
 rule filter_transcripts:
-    "Fichier de sortie pour la portion proteomique"
+    """Filter transcripts for proteomics."""
     input:
         combined_fasta=rules.fusion_transcripts.output.combined_transcripts
     output:
@@ -240,3 +160,5 @@ rule filter_transcripts:
         "../envs/python.yml"
     script:
         "../scripts/filter_transcripts.py"
+
+# split_filtered_transcript.py script utilisé pour découper 
