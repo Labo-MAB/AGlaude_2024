@@ -11,15 +11,27 @@ from Bio.SeqRecord import SeqRecord
 from intervaltree import IntervalTree  
 import copy
 import re
+import pickle
+from multiprocessing import Process, Queue
 from pathlib import Path
-import time
-from concurrent.futures import as_completed, TimeoutError
+from queue import Empty
 
+
+# ------------------------------------------------------------
+# constante globale
+# ------------------------------------------------------------
+# Variables globales partagées par les workers
+global_genome = None
+global_gtf_exons = None
+global_trees = None
+#Variable pour le nombre de combinaison mutée/transcrit (_all_subsets)
+MAX_COMBINATION_SIZE = 10
+MAX_WORKER=3
+#variable pour debug_loglog
+DEBUG_MODE = False
 # ------------------------------------------------------------
 # 1) Configuration du log : redirige stdout & stderr vers un fichier
 # ------------------------------------------------------------
-
-# Utilisation de l'output Snakemake pour générer le log 
 output_path = Path(snakemake.output.mutated_output_fasta)
 log_path = output_path.with_suffix(".log")  # ex: 1_to_9_mutated_transcripts.log
 log_fh = open(log_path, "w", buffering=1)
@@ -33,115 +45,62 @@ def log(msg: str):
 sys.stdout = log_fh
 sys.stderr = log_fh
 
+def debug_log(msg: str):
+    if DEBUG_MODE:
+        log(f"[DEBUG] {msg}")
+
 # ------------------------------------------------------------
 # 2) Fonctions du pipeline
 # ------------------------------------------------------------
 
-def read_vcf(vcf_file: str) -> pd.DataFrame:
+def read_vcf(vcf_file: str):
     """
-    Lit un VCF simple (pas bgzippé) et retourne un DataFrame avec
-    colonnes ['chromosome','position','ref_nucleotide','alt_nucleotide']
+    Génère les mutations lues depuis un VCF simple (pas bgzippé).
+    Chaque mutation est retournée comme un dictionnaire.
     """
-    mutations = []
-    with open(vcf_file, 'r') as v:
-        for line in v:
+    with open(vcf_file, "r") as f:
+        for line in f:
             if line.startswith('#'):
                 continue
-            chrom, pos, _, ref, alt, *rest = line.strip().split('\t')
-            alts = alt.split(',')
-            for a in alts:
-                mutations.append((chrom, int(pos), ref, a))
-
-    df = pd.DataFrame(mutations,
-                      columns=['chromosome','position','ref_nucleotide','alt_nucleotide'])
-    df['position'] = df['position'].astype(np.uint32)
-    log(f"1) VCF chargé avec succès → {len(df)} mutations")
-    return df
-
-# Génère toutes les combinaisons non vides
-def all_subsets(iterable, max_size=None):
-    s = list(iterable)
-    max_len = len(s) if max_size is None else min(max_size, len(s))
-    return chain.from_iterable(combinations(s, r) for r in range(1, max_len + 1))
+            chrom, pos, _, ref, alt, *_ = line.strip().split('\t')
+            for alt_index, a in enumerate(alt.split(',')):
+                yield {
+                    'chromosome': chrom,
+                    'position': int(pos),
+                    'ref_nucleotide': ref,
+                    'alt_nucleotide': a,
+                    'alt_index': alt_index
+                }
 
 
-def adjust_for_strand(ref, alt, strand):
-    """Retourne REF et ALT ajustés si le transcript est sur le brin négatif"""
-    if strand == "-":
-        return str(Seq(ref).reverse_complement()), str(Seq(alt).reverse_complement())
-    return ref, alt
-
-def parse_cds_range(description):
-    """Extrait le range CDS (start, end) depuis la description, ou retourne None si absent."""
+def _parse_cds_range(description):
     m = re.search(r'CDS=(\d+)-(\d+)', description)
     if m:
-        start, end = map(int, m.groups())
-        return start, end
+        return tuple(map(int, m.groups()))
     return None
 
+# Génère toutes les combinaisons non vides
+def _all_subsets(iterable, max_size=None):
+    s = list(iterable)
+    max_len = len(s) if max_size is None else min(max_size, len(s))
+    for r in range(1, max_len + 1):
+        for combo in combinations(s, r):
+            pos_seen = set()
+            skip = False
+            for m in combo:
+                if m['position'] in pos_seen:
+                    skip = True
+                    break
+                pos_seen.add(m['position'])
+            if not skip:
+                yield combo
 
-# Variables globales partagées par les workers
-global_genome = None
-global_gtf_exons = None
-global_trees = None
-
-def init_worker(genome_pkl: str, tree_pkl: str, exon_parquet: str):
-    global global_genome, global_gtf_exons, global_trees
-    import pickle
-    with open(genome_pkl, "rb") as f:
-        genome_dict = pickle.load(f)
-    # Wrap into SeqRecord objects
-    global_genome = {
-        tid: SeqRecord(Seq(seq), id=tid, description="")
-        for tid, seq in genome_dict.items()
-    }
-    with open(tree_pkl, "rb") as f:
-        global_trees = pickle.load(f)
-    global_gtf_exons = pd.read_parquet(exon_parquet)
-
-    for exon in global_gtf_exons.itertuples():
-        chrom = exon.chromosome
-        start = exon.start
-        end = exon.end
-        if start > end:
-            start, end = end, start  # inverse si start > end
-        end += 1  # intervaltree half-open
-        tree = global_trees.setdefault(chrom, IntervalTree())
-        tree.addi(start, end, exon.transcript_id)
-    log(f"Clés global_trees : {list(global_trees.keys())}")
-    chrom = "1"
-    df1 = global_gtf_exons[global_gtf_exons["chromosome"] == chrom]
-    log(f"Exons chr{chrom}: start min={df1['start'].min()}, start max={df1['start'].max()}, end min={df1['end'].min()}, end max={df1['end'].max()}")
-
-# Récupère et assemble les exons d'un transcript
-def _print_transcript_exons(transcript_id):
-    global global_genome, global_gtf_exons
-    exons = global_gtf_exons[global_gtf_exons['transcript_id'] == transcript_id]
-    if exons.empty or transcript_id not in global_genome:
-        return None, None
-    strand = exons.iloc[0]['strand']
-    sorted_exons = exons.sort_values('start', ascending=(strand == '+'))
-    seq = str(global_genome[transcript_id].seq)
-    mapping, recon = {}, []
-    offset = 0
-    for _, exon in sorted_exons.iterrows():
-        length = exon['end'] - exon['start'] + 1
-        coords = (range(exon['start'], exon['end']+1)
-                  if strand=='+' else
-                  range(exon['end'], exon['start']-1, -1))
-        for i, gpos in enumerate(coords):
-            mapping[gpos] = offset + i
-        recon.append(seq[offset:offset+length])
-        offset += length
-    return "".join(recon), mapping
-
-# Applique les mutations sur la séquence du transcript
 def _apply_mutations_to_transcript(transcript_id, seq, mapping, muts, strand):
     """
     Applique les mutations à une séquence de transcript.
     REF/ALT sont ajustés si le transcrit est sur le brin négatif.
     """
-    muts_in = [copy.deepcopy(m) for m in muts if m['position'] in mapping]
+    muts_in = [m.copy() for m in muts if m['position'] in mapping]
 
     applied_mutations = []
     for m in muts_in:
@@ -156,8 +115,8 @@ def _apply_mutations_to_transcript(transcript_id, seq, mapping, muts, strand):
         ref = m['ref_nucleotide']
         alt = m['alt_nucleotide']
 
-        adj_ref, adj_alt = adjust_for_strand(ref, alt, strand)
-        log(f"[DEBUG] Adj REF/ALT for strand {strand}: {ref}/{alt} -> {adj_ref}/{adj_alt}")
+        adj_ref, adj_alt = _adjust_for_strand(ref, alt, strand)
+        debug_log(f"[DEBUG] Adj REF/ALT for strand {strand}: {ref}/{alt} -> {adj_ref}/{adj_alt}")
 
         # Calcul de l’indice de départ
         if strand == '-':
@@ -171,24 +130,24 @@ def _apply_mutations_to_transcript(transcript_id, seq, mapping, muts, strand):
         adj_alt_trimmed = adj_alt[:max_len]
 
         seq_check = new_seq[start_idx : start_idx + len(adj_ref_trimmed)]
-        log(f"[DEBUG] seq[{start_idx}:{start_idx + len(adj_ref_trimmed)}] = {seq_check} vs REF attendue = {adj_ref_trimmed} (transcript {transcript_id})")
+        debug_log(f"[DEBUG] seq[{start_idx}:{start_idx + len(adj_ref_trimmed)}] = {seq_check} vs REF attendue = {adj_ref_trimmed} (transcript {transcript_id})")
 
         if seq_check != adj_ref_trimmed:
             log(f"[WARN] Mutation ignorée pour {transcript_id} à pos transcript {p+1}: attendu {adj_ref_trimmed}, trouvé {seq_check}")
             continue
 
         if len(adj_ref_trimmed) < len(adj_ref):
-            log(f"[INFO] Troncage de REF/ALT pour {transcript_id} à pos transcript {p+1}: {adj_ref}/{adj_alt} → {adj_ref_trimmed}/{adj_alt_trimmed}")
+            log(f"[INFO] Troncage de REF/ALT pour {transcript_id} à pos transcript {p+1}: {adj_ref}/{adj_alt} -> {adj_ref_trimmed}/{adj_alt_trimmed}")
 
-        log(f"[DEBUG] Applying: pos={p}, ref={adj_ref_trimmed}, alt={adj_alt_trimmed}")
-        log(f"[DEBUG] Avant mutation  [{transcript_id}]: {new_seq[start_idx-5:start_idx+len(adj_ref_trimmed)+5]}")
+        debug_log(f"[DEBUG] Applying: pos={p}, ref={adj_ref_trimmed}, alt={adj_alt_trimmed}")
+        debug_log(f"[DEBUG] Avant mutation  [{transcript_id}]: {new_seq[start_idx-5:start_idx+len(adj_ref_trimmed)+5]}")
 
         if strand == '-':
             new_seq = new_seq[:start_idx] + adj_alt_trimmed + new_seq[p + 1:]
         else:
             new_seq = new_seq[:start_idx] + adj_alt_trimmed + new_seq[start_idx + len(adj_ref_trimmed):]
 
-        log(f"[DEBUG] Après mutation  [{transcript_id}]: {new_seq[start_idx-5:start_idx+len(adj_alt_trimmed)+5]}")
+        debug_log(f"[DEBUG] Après mutation  [{transcript_id}]: {new_seq[start_idx-5:start_idx+len(adj_alt_trimmed)+5]}")
 
         shift += len(adj_alt_trimmed) - len(adj_ref_trimmed)
 
@@ -200,143 +159,246 @@ def _apply_mutations_to_transcript(transcript_id, seq, mapping, muts, strand):
 
     return new_seq, applied_mutations
 
-
 # Traite un transcript dans un worker
-def _process_transcript_worker(transcript_id, alt_groups):
+def _process_transcript_worker(transcript_id, mutations):
     global global_genome, global_gtf_exons
-    log(f"Début du traitement pour {transcript_id} ({sum(len(g) for g in alt_groups)} mutations dans {len(alt_groups)} groupes)")
+    log(f"Début du traitement pour {transcript_id} ({len(mutations)} mutations)")
 
     exons = global_gtf_exons[global_gtf_exons['transcript_id'] == transcript_id]
     seq, mapping = _print_transcript_exons(transcript_id)
     if seq is None:
         return []
-
     out = []
-
-    # WT
+    # WT : on garde le header complet avec description originale
     wt_rec = SeqRecord(
         Seq(seq),
         id=transcript_id,
         description=global_genome[transcript_id].description
     )
     out.append(wt_rec)
-
     strand = exons.iloc[0]['strand']
-    cds_range = parse_cds_range(global_genome[transcript_id].description)
+    cds_range = _parse_cds_range(global_genome[transcript_id].description)
+    if len(mutations) > MAX_COMBINATION_SIZE:
+        if cds_range:
+            _, cds_end = cds_range
+            mutations = [m for m in mutations if m['position'] in mapping and mapping[m['position']] + 1 <= cds_end]
+            log(f"[FILTER] {transcript_id} contient >15 mutations, filtrées sur CDS (pos ≤ {cds_end}) -> {len(mutations)} restantes.")
+        else:
+            mutations = sorted(
+                [m for m in mutations if m['position'] in mapping],
+                key=lambda m: mapping[m['position']]
+            )[:15]
+            log(f"[FILTER] {transcript_id} contient >15 mutations, CDS absent -> 15 premières positions gardées.")
 
-    for group in alt_groups:
-        # Filtrage mutations pour ce groupe
-        group = [m for m in group if m['position'] in mapping]
-        if len(group) > 15:
-            if cds_range:
-                _, cds_end = cds_range
-                group = [m for m in group if mapping[m['position']] + 1 <= cds_end]
-                log(f"[FILTER] {transcript_id} (groupe ALT) contient >15 mutations, filtrées sur CDS (pos ≤ {cds_end}) → {len(group)} restantes.")
+    for combo in _all_subsets(mutations, max_size=MAX_COMBINATION_SIZE):
+        if any(m['position'] not in mapping for m in combo):
+            continue
+
+        ms, applied = _apply_mutations_to_transcript(transcript_id, seq, mapping, combo, strand)
+
+        if len(applied) != len(combo):
+            log(f"[INFO] Combo ignoré pour {transcript_id} : demandé {len(combo)} mutations, appliquées {len(applied)}")
+            continue
+
+        signature = "_".join(f"{m['ref_nucleotide']}({m['alt_nucleotide']})" for m in applied)
+        positions = ";".join(str(mapping[m['position']] + 1) for m in applied)
+        new_id = f"{transcript_id}_mut_{signature}_pos={positions}"
+
+        #  Ne pas inclure de description sur les transcrits mutés
+        rec = SeqRecord(
+            ms if isinstance(ms, Seq) else Seq(ms),
+            id=new_id,
+            description=""
+        )
+        out.append(rec)
+        for m in applied:
+            cpos = mapping[m['position']]
+            ref_len = len(m['ref_nucleotide'])
+            if strand == '-':
+                start_idx = cpos - ref_len + 1
+                ref_codon = seq[start_idx:cpos + 1]
             else:
-                group = sorted(group, key=lambda m: mapping[m['position']])[:15]
-                log(f"[FILTER] {transcript_id} (groupe ALT) contient >15 mutations, CDS absent → 15 premières positions gardées.")
-
-        for combo in all_subsets(group, max_size=4):
-            if any(m['position'] not in mapping for m in combo):
-                continue
-
-            ms, applied = _apply_mutations_to_transcript(transcript_id, seq, mapping, combo, strand)
-
-            if len(applied) != len(combo):
-                log(f"[INFO] Combo ignoré pour {transcript_id} : demandé {len(combo)} mutations, appliquées {len(applied)}")
-                continue
-
-            signature = "_".join(f"{m['ref_nucleotide']}({m['alt_nucleotide']})" for m in applied)
-            positions = ";".join(str(mapping[m['position']] + 1) for m in applied)
-            new_id = f"{transcript_id}_mut_{signature}_pos={positions}"
-
-            rec = SeqRecord(
-                ms if isinstance(ms, Seq) else Seq(ms),
-                id=new_id,
-                description=""
-            )
-            out.append(rec)
-
-            for m in applied:
-                cpos = mapping[m['position']]
-                ref_len = len(m['ref_nucleotide'])
-                if strand == '-':
-                    start_idx = cpos - ref_len + 1
-                    ref_codon = seq[start_idx:cpos + 1]
-                else:
-                    ref_codon = seq[cpos:cpos + ref_len]
-
-                log(f"[CHECK] {transcript_id} | GENOME pos {m['position']} → cDNA pos {cpos} | REF VCF: {m['ref_nucleotide']} vs REF_SEQ: {ref_codon}")
-
+                ref_codon = seq[cpos:cpos + ref_len]
+            log(f"[CHECK] {transcript_id} | GENOME pos {m['position']} -> cDNA pos {cpos} | REF VCF: {m['ref_nucleotide']} vs REF_SEQ: {ref_codon}")
     return out
 
+def _worker_loop(task_queue, result_queue, fasta_path, exon_parquet_path, trees_pkl_path):
+    """
+    Fonction exécutée par chaque worker. Initialise les données locales et traite les transcripts à la chaîne.
+    """
+    _init_worker(fasta_path, exon_parquet_path, trees_pkl_path)
+    while True:
+        item = task_queue.get()
+        if item is None:
+            break  # Fin du traitement
+        transcript_id, mutations = item
+        try:
+            recs = _process_transcript_worker(transcript_id, mutations)
+            start_put = time.time()
+            log(f"[DEBUG] {transcript_id} - trying to put {len(recs)} recs in result_queue")
+            result_queue.put(recs)
+            end_put = time.time()
+            log(f"[DEBUG] {transcript_id} - put done in {end_put - start_put:.2f} sec")
+
+        except Exception as e:
+            result_queue.put([])
+            log(f"[ERROR WORKER] {transcript_id} - {e}")
 
 
-# Génère les transcrits mutés en parallèle en utilisant l'IntervalTree
+def _run_with_queue(tx_muts, num_workers, fasta_path, exon_parquet_path, trees_pkl_path):
+    task_queue = Queue()
+    result_queue = Queue()
+
+    # Enfile tous les transcripts à traiter
+    for tx, muts in tx_muts.items():
+        task_queue.put((tx, muts))
+    for _ in range(num_workers):
+        task_queue.put(None)  # Sentinelle pour arrêt
+
+    # Lance les workers
+    workers = []
+    for _ in range(num_workers):
+        p = Process(target=_worker_loop, args=(task_queue, result_queue, fasta_path, exon_parquet_path, trees_pkl_path))
+        p.start()
+        workers.append(p)
+    total = len(tx_muts)
+    received = 0
+
+    # with tqdm(total=total, desc="Traitement des transcrits", file=sys.__stdout__) as pbar:
+    while received < total:
+        try:
+            recs = result_queue.get(timeout=1)  # récupère dès que dispo
+            received += 1
+            for r in recs:
+                yield r
+            # pbar.update(1)
+        except Empty:
+            continue  # aucun résultat pour l'instant, on réessaie
+    # Attendre la fin des workers
+    for p in workers:
+        p.join()
+
+
+def _init_worker(fasta_path: str, exon_parquet_path: str, trees_pkl_path="trees.pkl"):
+    """Initialise chaque worker : charge le génome, le DataFrame d'exons et construit ou charge les IntervalTrees"""
+    global global_genome, global_gtf_exons, global_trees
+
+    # 1) Genome en mémoire
+    global_genome = {
+        rec.id.split('.')[0]: rec
+        for rec in SeqIO.parse(fasta_path, "fasta")
+    }
+    # 2) DataFrame d'exons
+    global_gtf_exons = pd.read_parquet(exon_parquet_path)
+    # 3) Chargement ou construction des IntervalTrees
+    if os.path.exists(trees_pkl_path):
+        with open(trees_pkl_path, "rb") as f:
+            global_trees = pickle.load(f)
+        log(f"[INIT] IntervalTrees chargés depuis {trees_pkl_path}")
+    else:
+        global_trees = {}
+        for exon in global_gtf_exons.itertuples():
+            chrom = exon.chromosome
+            start, end = exon.start, exon.end
+            if start > end:
+                start, end = end, start
+            end += 1  # intervaltree half-open
+            tree = global_trees.setdefault(chrom, IntervalTree())
+            tree.addi(start, end, exon.transcript_id)
+
+        with open(trees_pkl_path, "wb") as f:
+            pickle.dump(global_trees, f)
+        log(f"[BUILD] IntervalTree construit et sauvegardé dans {trees_pkl_path}")
+    # Infos debug_logour debug
+    log(f"[INFO] IntervalTrees disponibles pour chromosomes : {list(global_trees.keys())}")
+    chrom = '1'
+    df1 = global_gtf_exons[global_gtf_exons["chromosome"] == chrom] #### chrom = '1' retiré
+    debug_log(f"[DEBUG] Exons chr{chrom}: start min={df1['start'].min()}, max={df1['start'].max()}")
+
+
+# Récupère et assemble les exons d'un transcript
+def _print_transcript_exons(transcript_id):
+    global global_genome, global_gtf_exons
+
+    exons = global_gtf_exons[global_gtf_exons['transcript_id'] == transcript_id]
+    if exons.empty or transcript_id not in global_genome:
+        log(f"[ERROR] Transcript {transcript_id} non trouvé.")
+        return None, None
+    strand = exons.iloc[0]['strand']
+    sorted_exons = exons.sort_values('start', ascending=(strand == '+'))
+    seq = str(global_genome[transcript_id].seq)
+    mapping = {}
+    offset = 0
+    all_entries = []
+    for _, exon in sorted_exons.iterrows():
+        start, end = exon.start, exon.end
+        length = end - start + 1
+        coords = (
+            range(start, end + 1) if strand == '+' else
+            range(end, start - 1, -1)
+        )
+        for i, gpos in enumerate(coords):
+            cpos = offset + i
+            mapping[gpos] = cpos
+            base = seq[cpos] if cpos < len(seq) else '?'
+            all_entries.append((gpos, cpos, base))
+        offset += length
+
+    # Log premier et dernier nucléotide
+    log(f"Transcript: {transcript_id} (strand = {strand})")
+    log(f"  FIRST:  GENOME {all_entries[0][0]} -> cDNA {all_entries[0][1]} -> BASE {all_entries[0][2]}")
+    log(f"  LAST :  GENOME {all_entries[-1][0]} -> cDNA {all_entries[-1][1]} -> BASE {all_entries[-1][2]}")
+    log(f"  TOTAL LENGTH: {len(seq)}")
+
+    return seq, mapping
+
+# Applique les mutations sur la séquence du transcript
+def _adjust_for_strand(ref, alt, strand):
+    if strand == "-":
+        return str(Seq(ref).reverse_complement()), str(Seq(alt).reverse_complement())
+    return ref, alt
+
 def _generate_mutated_transcripts_parallel(
-    fasta, vcf_groups, exon_parquet, max_workers=1, trees_pkl="trees.pkl"
+    fasta, exon_parquet, max_workers=MAX_WORKER, trees_pkl="trees.pkl",vcf_file=None
 ):
-    log("2) Chargement des exons pour le main…")
-    init_worker(fasta, exon_parquet, trees_pkl)
-
+    log("2) Chargement des exons pour le main")
+    _init_worker(fasta, exon_parquet, trees_pkl)
     for chrom, tree in global_trees.items():
         intervals = list(tree)
         if intervals:
             min_start = min(iv.begin for iv in intervals)
             max_end = max(iv.end for iv in intervals)
-            log(f"IntervalTree {chrom}: {len(intervals)} intervalles, start min={min_start}, end max={max_end}")
+            debug_log(f"IntervalTree {chrom}: {len(intervals)} intervalles, start min={min_start}, end max={max_end}")
         else:
             log(f"IntervalTree {chrom}: AUCUN intervalle.")
-
-    log(f"   → {len(global_gtf_exons)} exons chargés.")
-
-    # 3) Mapping transcript → [groupes de mutations indépendants]
+    log(f"   -> {len(global_gtf_exons)} exons chargés.")
     tx_muts = {}
-    for group in vcf_groups:  # chaque groupe = [mutation1, mutation2, ...] (même ALT)
-        for mut in group:
-            chrom = mut['chromosome']
-            pos = mut['position']
-            if chrom not in global_trees:
-                continue
-            for iv in global_trees[chrom][pos]:
-                tx = iv.data
-                tx_muts.setdefault(tx, []).append(group)  # on ajoute un groupe complet
-
+    for mut in read_vcf(vcf_file):
+        chrom = mut['chromosome']
+        pos   = mut['position']
+        if chrom not in global_trees:
+            continue
+        for iv in global_trees[chrom][pos]:
+            tx = iv.data
+            tx_muts.setdefault(tx, []).append(mut)
+    for tx, muts in tx_muts.items():
+        log(f"--> {tx} a {len(muts)} mutations (positions uniques : {len({m['position'] for m in muts})})")
     total = len(tx_muts)
-    log(f"3) Mapping construit → {total} transcripts à traiter (groupes ALT exclusifs inclus).")
+    log(f"3) Mapping construit -> {total} transcripts à traiter (≤15 mutations chacun).")
+    log("4) Lancement des workers avec Queue…")
 
-    # 4) Exécution parallèle
-    log("4) Lancement du ProcessPoolExecutor…")
-    with concurrent.futures.ProcessPoolExecutor(
-        max_workers=max_workers,
-        initializer=init_worker,
-        initargs=(fasta, exon_parquet, trees_pkl)
-    ) as exe:
-
-        futures = {
-            exe.submit(_process_transcript_worker, tx, alt_groups): tx
-            for tx, alt_groups in tx_muts.items()
-        }
-
-        with tqdm(total=total, desc="Traitement des transcrits", file=sys.__stdout__) as pbar:
-            for fut in concurrent.futures.as_completed(futures):
-                tx_name = futures[fut]
-                log(f"Transcript {tx_name} traité.")
-                for rec in fut.result():
-                    yield rec
-                pbar.update(1)
+    return _run_with_queue(tx_muts, max_workers, fasta, exon_parquet, trees_pkl)
 
 
 # Ecrit les transcrits mutés par batch pour économiser la mémoire
 def save_mutated_transcripts_in_batches_parallel(
-    genome_pkl, tree_pkl, exon_parquet, vcf_df, out_fasta,
-    batch_size=5, max_workers=2
+    fasta, exon_parquet, out_fasta,
+    batch_size=5, max_workers=MAX_WORKER, trees_pkl="trees.pkl",vcf_file=None
 ):
-
     batch = []
     with open(out_fasta, "w") as out:
         for rec in _generate_mutated_transcripts_parallel(
-            genome_pkl, tree_pkl, exon_parquet, vcf_df, max_workers
+            fasta, exon_parquet, max_workers, trees_pkl,vcf_file
         ):
             batch.append(rec)
             if len(batch) >= batch_size:
@@ -345,7 +407,9 @@ def save_mutated_transcripts_in_batches_parallel(
                 batch.clear()
         if batch:
             SeqIO.write(batch, out, "fasta")
-            out.flush(); os.fsync(out.fileno())
+            out.flush()
+        os.fsync(out.fileno())
+
 
 def filter_transcripts(input_fasta, output_fasta):
     """
@@ -356,7 +420,6 @@ def filter_transcripts(input_fasta, output_fasta):
     """
     groups = {}
     total_records = 0
-
     for record in SeqIO.parse(input_fasta, "fasta"):
         total_records += 1
         m = re.search(r"(ENST\d+)", record.id)
@@ -364,7 +427,6 @@ def filter_transcripts(input_fasta, output_fasta):
             continue
         tid = m.group(1)
         groups.setdefault(tid, []).append(record)
-
     filtered = []
     kept = 0
     for tid, recs in groups.items():
@@ -373,7 +435,7 @@ def filter_transcripts(input_fasta, output_fasta):
         if has_wt and has_mut:
             filtered.extend(recs)
             kept += 1
-
+            
     SeqIO.write(filtered, output_fasta, "fasta")
     print(f" Total lus : {total_records}")
     print(f" Groupes gardés (WT+mut) : {kept}")
@@ -384,27 +446,45 @@ def filter_transcripts(input_fasta, output_fasta):
 # ------------------------------------------------------------
 def main():
     log("=== DÉMARRAGE DU PIPELINE ===")
-    vcf_file          = snakemake.input.vcf
+# ------------------------------------------------------------
+#  Input Paths
+# ------------------------------------------------------------
+
+    vcf_file = snakemake.input.vcf
     transcripts_fasta = snakemake.input.transcripts_fasta
     mutated_output_fa = snakemake.output.mutated_output_fasta
-    exon_parquet      = snakemake.input.exon_parquet
+    exon_parquet = snakemake.input.exon_parquet
     genome_pkl = snakemake.input.genome_pkl
-    tree_pkl = snakemake.input.tree_pkl
-
+    trees_pkl = snakemake.input.tree_pkl
+    
+    
 #    vcf_file = "20QC_variant_tronque.vcf"
 #    transcripts_fasta= "breast_cancer/pickle/transcriptome.fa"
-#    transcripts_fasta = "breast_cancer/pickle/gencode.v47.transcripts.fa"
 #    mutated_output_fa  = "mutated_transcripts.fa"
 #    exon_parquet = "exon_data.parquet"  
+#    trees_pkl = "trees.pkl"
+
+# ------------------------------------------------------------
+# output Path + constante
+# ------------------------------------------------------------
     final_fasta = "final_transcriptome.fa"
-    print("bob")
+    
+    
+# ------------------------------------------------------------
+# 3) logic :)
+# ------------------------------------------------------------
+
     try:
-        df = read_vcf(vcf_file)
+#        df = read_vcf(vcf_file)
         save_mutated_transcripts_in_batches_parallel(
-            genome_pkl, tree_pkl, exon_parquet, df,
-            mutated_output_fa,
-            batch_size=5,
-            max_workers=2
+            fasta=transcripts_fasta,
+           # vcf_df=df,
+            exon_parquet=exon_parquet,
+            out_fasta=mutated_output_fa,
+            batch_size=25,
+            max_workers=MAX_WORKER,
+            trees_pkl=trees_pkl,
+            vcf_file=vcf_file
         )
         filter_transcripts(mutated_output_fa, final_fasta)
         log(f"=== FASTA filtré écrit dans {final_fasta} ===")
