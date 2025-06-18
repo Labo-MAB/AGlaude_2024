@@ -1,10 +1,3 @@
-"""
-Ce script permet d'analyser les CDS fournit par FOMOnet, de vérifier l'authencité des prédictions, de vérifier l'effet des mutations
-dans les CDS, détecter les nouveaux CDS etc. Puis, de reconstruire la séquence proteique selon le CDS
-
-
-*** modification a apporter - prend-t-il en compte le CDS actuel pour reconstruire la séquence ; que se passe-t-il lorsquil y a + qu'un CDS ?
-"""
 import pickle
 import re
 from Bio import SeqIO
@@ -12,7 +5,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from pprint import pprint
 from collections import defaultdict
-
+import os
 
 def load_pickle(file_path):
     """Charge le fichier pickle et retourne le dictionnaire associé."""
@@ -20,10 +13,10 @@ def load_pickle(file_path):
         data = pickle.load(f)
     return data
 
-def load_reference_transcripts(fasta_file):
+def load_custom_transcriptome(fasta_file):
     """
-    Charge le transcriptome de référence à partir d'un fichier FASTA
-    et retourne un dictionnaire de SeqRecord (via Biopython).
+    Charge le transcriptome personnalisés (contenant WT avec CDS + mutée )
+    et retourne un dictionnaire de SeqRecord
     """
     return SeqIO.to_dict(SeqIO.parse(fasta_file, 'fasta'))
 
@@ -330,36 +323,82 @@ def _get_gene_name(record):
     match = re.search(r'gene=([^\s]+)', record.description)
     return match.group(1) if match else "unknown"
 
-def write_fasta_sequences(filtered_dict, transcriptome, output_fasta):
-    """
-    Écrit un fichier FASTA avec uniquement les séquences protéiques uniques par transcript_id.
-    Chaque séquence est associée à tous les identifiants (WT ou mutants) qui produisent cette séquence (TA=...).
-    """
-    proteins_by_transcript = {}  # { transcript_id: { entry_id: {"sequence": str, "TA": set()} } }
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+import pandas as pd
+
+def write_fasta_sequences(filtered_dict, transcriptome, output_fasta, diagnostic_tsv):
+    proteins_by_transcript = {}
+    skipped_infos = []  # ← ici on accumule les lignes du TSV
+
+    skipped_missing = 0
+    skipped_no_protein = 0
 
     for transcript_id, data in filtered_dict.items():
-        if transcript_id not in transcriptome:
-            continue
-
-        record = transcriptome[transcript_id]
-        gene_name = _get_gene_name(record)
+        record = transcriptome.get(transcript_id)
         cds = data.get("ref")
-        prot_seq = _get_protein_sequence(record, cds)
 
-        if not prot_seq:
+        if record is None:
+            print(f"[SKIP] Transcript {transcript_id} absent du transcriptome.")
+            skipped_missing += 1
             continue
 
-        prot_seq = prot_seq.strip().upper()
-        proteins_by_transcript[transcript_id] = {}
+        # extraire séquence et CDS
+        seq_len = len(record.seq)
+        cds_len = None
+        cause = None
 
-        # Ajoute WT
+        if not cds:
+            cause = "Pas de CDS"
+        else:
+            start, end = cds
+            cds_len = end - start + 1
+
+            if end > seq_len:
+                cause = "CDS hors-borne"
+            elif cds_len < 3:
+                cause = "CDS trop court"
+            else:
+                cds_seq = record.seq[start-1:end]
+                if not set(cds_seq.upper()).issubset({"A", "T", "C", "G"}):
+                    cause = "Bases invalides"
+                else:
+                    try:
+                        prot_seq = cds_seq.translate(to_stop=True)
+                        if len(prot_seq.strip()) == 0 or str(prot_seq.strip()) == "*":
+                            cause = "Traduction vide"
+                        else:
+                            cause = None
+                    except Exception:
+                        cause = "Erreur traduction"
+
+        # si une cause a été identifiée → skip + ajouter à diagnostic
+        if cause:
+            print(f"[SKIP] Pas de protéine WT pour {transcript_id} ({cause})")
+            skipped_no_protein += 1
+            skipped_infos.append([
+                transcript_id,
+                f"{cds[0]}-{cds[1]}" if cds else "NA",
+                seq_len,
+                cds_len if cds_len else "NA",
+                cause
+            ])
+            continue
+
+        # on génère normalement si pas de cause
+        prot_seq = cds_seq.translate(to_stop=True)
+        prot_seq = str(prot_seq).strip().upper()
+
+        gene_name = _get_gene_name(record)
+        proteins_by_transcript[transcript_id] = {}
         proteins_by_transcript[transcript_id][transcript_id] = {
             "sequence": prot_seq,
             "TA": set([transcript_id]),
             "gene_name": gene_name
         }
 
-        # Traite les mutants associés à ce transcript
         for mut_key, val in data.get("mut", []):
             try:
                 _, signature, positions = _parse_mutation_key(mut_key)
@@ -370,10 +409,16 @@ def write_fasta_sequences(filtered_dict, transcriptome, output_fasta):
                     ref_base, alt_base = mut_str.split("(")
                     alt_base = alt_base.rstrip(")")
                     pos_index = pos - 1
+                    if pos_index < 0 or pos_index >= len(seq_mut):
+                        print(f"[WARN] Pos hors borne {pos} pour {mut_key}")
+                        continue
                     seq_mut[pos_index] = alt_base
 
                 if cds:
                     start, end = cds
+                    if end > len(seq_mut):
+                        print(f"[WARN] CDS end {end} dépasse seq {len(seq_mut)} pour {mut_key}")
+                        continue
                     coding_seq = "".join(seq_mut[start - 1:end])
                 else:
                     coding_seq = "".join(seq_mut)
@@ -395,9 +440,12 @@ def write_fasta_sequences(filtered_dict, transcriptome, output_fasta):
                     }
 
             except Exception as e:
-                print(f"Erreur application mutation {mut_key}: {e}")
+                print(f"[ERROR] Mutation {mut_key} : {e}")
 
-    # Écriture du fichier FASTA
+    print(f"[WRITE] {len(proteins_by_transcript)} transcripts à écrire")
+    print(f"[SKIP] {skipped_missing} transcripts absents du transcriptome")
+    print(f"[SKIP] {skipped_no_protein} transcripts sans protéine WT")
+
     with open(output_fasta, "w") as out_f:
         for transcript_id, subdict in proteins_by_transcript.items():
             for entry_id, obj in subdict.items():
@@ -409,13 +457,12 @@ def write_fasta_sequences(filtered_dict, transcriptome, output_fasta):
                 out_f.write(header + "\n")
                 out_f.write(obj["sequence"] + "\n")
 
-
-
-
-
-
-
-
+    # Sauvegarde du TSV
+    df = pd.DataFrame(skipped_infos, columns=[
+        "transcript_id", "CDS", "sequence_length", "CDS_length", "problème"
+    ])
+    df.to_csv(diagnostic_tsv, sep="\t", index=False)
+    print(f"[INFO] Fichier diagnostique écrit dans {diagnostic_tsv}")
 
 
 
@@ -496,52 +543,86 @@ def merge_with_uniprot(transcript_fasta, uniprot_fasta, final_output):
 
     SeqIO.write(final_records, final_output, "fasta")
 
+def diagnostiquer_transcrits_non_traduits(filtered_dict, transcriptome, output_tsv, skipped_ids):
+    """
+    Produit un fichier TSV listant les transcrits avec CDS mais sans protéine WT traduite,
+    avec explication de la cause : CDS hors-borne, trop court, N non traduisibles, etc.
+    """
+    lignes = []
+
+    for transcript_id in skipped_ids:
+        record = transcriptome.get(transcript_id)
+        cds = filtered_dict.get(transcript_id, {}).get("ref")
+
+        if not record or not cds:
+            continue  # transcript absent ou pas de CDS connu dans filtered_dict
+
+        start, end = cds
+        seq_len = len(record.seq)
+        cds_len = end - start + 1
+
+        if end > seq_len:
+            cause = "CDS hors-borne"
+        elif cds_len < 3:
+            cause = "CDS trop court"
+        else:
+            cds_seq = record.seq[start-1:end]
+            if not set(cds_seq.upper()).issubset({"A", "T", "C", "G"}):
+                cause = "Bases invalides"
+            else:
+                try:
+                    prot = cds_seq.translate(to_stop=True)
+                    if len(prot) == 0:
+                        cause = "Traduction vide"
+                    else:
+                        cause = "Inconnue"
+                except Exception:
+                    cause = "Erreur traduction"
+
+        lignes.append([
+            transcript_id,
+            f"{start}-{end}",
+            seq_len,
+            cds_len,
+            cause
+        ])
+
+    import pandas as pd
+    df = pd.DataFrame(
+        lignes,
+        columns=["transcript_id", "CDS", "sequence_length", "CDS_length", "problème"]
+    )
+    df.to_csv(output_tsv, sep="\t", index=False)
+    print(f"[INFO] Diagnostic écrit dans : {output_tsv}")
+
+
 
 def main():
-    pickle_file = "toutes_petites_orfs.pkl"
+    pickle_file = "SRR43_tx_orfs.pkl"
+    fasta_path = "../FOMOnet/FOMOnet/data/transcriptome.fa"
+    fasta_path = "../transcriptome.fa"
 
-    # Fichier qui contient les CDS dans les headers → pour annoter les CDS de référence
-    fasta_with_cds = "transcriptome.fa"
-    # Fichier nettoyé utilisé pour l'analyse réelle (traduction, mutation, etc.)
-    fasta_clean = "final_transcriptome_dedup.fa"
-
-    # Référence UniProt pour la fusion finale
-    uniprot_fasta = "/mnt/c/Users/Antho/OneDrive - USherbrooke/Documents/gadph_GTEX/Final_gtex/expression_withcluster/pseudogenes/1_expression_Gtex/references/human-openprot-2_1-refprots+altprots+isoforms-uniprot2022_06_01.fasta"
+#    uniprot_fasta = "/mnt/c/Users/Antho/OneDrive - USherbrooke/Documents/gadph_GTEX/Final_gtex/expression_withcluster/pseudogenes/1_expression_Gtex/references/human-openprot-2_1-refprots+altprots+isoforms-uniprot2022_06_01.fasta"
+    uniprot_fasta = "/mnt/c/Users/Anthony/OneDrive - USherbrooke/Documents/gadph_GTEX/Final_gtex/expression_withcluster/pseudogenes/1_expression_Gtex/references/human-openprot-2_1-refprots+altprots+isoforms-uniprot2022_06_01.fasta"
 
     # Fichiers de sortie
-    final_output_fasta = "output/final_merged.fasta"
-    output_file = "output/mauvaise_prediction.txt"
-    output_fasta = "output/sequences_proteiques.fasta"
-    impact_outfile = "output/mutations_impact.tsv"
+    os.makedirs("SRR43", exist_ok=True)
+    final_output_fasta = "SRR43/final_merged.fasta"
+    output_file = "SRR43/mauvaise_prediction.txt"
+    output_fasta = "SRR43/sequences_proteiques.fasta"
+    impact_outfile = "SRR43/mutations_impact.tsv"
+    diagnostique_tsv = "SRR43/transcrits_non_traduits.tsv"
 
     # Chargement des données
     pickle_data = load_pickle(pickle_file)
-    transcriptome_with_cds = load_reference_transcripts(fasta_with_cds)
-    transcriptome_clean = load_reference_transcripts(fasta_clean)
-
-    # Groupement des transcrits WT / mutés
-    valid_dict = group_keys(pickle_data)
-
-    # Ajout des coordonnées CDS depuis le fichier enrichi
-    ref_cds_dict = add_ref_cds(valid_dict, transcriptome_with_cds)
-
-    # Vérification des correspondances CDS
-    filtered_dict = verify_predictions(ref_cds_dict, output_file)
+    transcriptome = load_custom_transcriptome(fasta_path)
+    valid_dict = group_keys(pickle_data)                                    # Groupement des transcrits WT / mutés
+    ref_cds_dict = add_ref_cds(valid_dict, transcriptome)          # Ajout des coordonnées CDS depuis le fichier enrichi
+    filtered_dict = verify_predictions(ref_cds_dict, output_file)           # Vérification des correspondances CDS
     print(f"Nombre de transcripts passés au FASTA = {len(filtered_dict)}")
-
-    # Analyse de l'impact des mutations
-    analyser_impact(filtered_dict, impact_outfile, transcriptome_clean)
-    print(f"Fichier d'impact des mutations écrit dans : {impact_outfile}")
-
-    # Traduction des protéines (séquences WT et mutées)
-    write_fasta_sequences(filtered_dict, transcriptome_clean, output_fasta)
-
-    # Fusion avec UniProt
-    merge_with_uniprot(output_fasta, uniprot_fasta, final_output_fasta)
-
-    print(f"Vérification terminée. Les mauvaises prédictions ont été enregistrées dans : {output_file}")
-    print(f"Le fichier FASTA des séquences protéiques a été créé : {output_fasta}")
-    print(f"Le fichier final fusionné avec UniProt a été créé : {final_output_fasta}")
+    analyser_impact(filtered_dict, impact_outfile, transcriptome)     # Analyse de l'impact des mutations
+    write_fasta_sequences(filtered_dict, transcriptome, output_fasta, diagnostique_tsv)
+    merge_with_uniprot(output_fasta, uniprot_fasta, final_output_fasta)     # Fusion avec UniProt
 
 if __name__ == "__main__":
     main()
