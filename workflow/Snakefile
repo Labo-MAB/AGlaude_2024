@@ -27,15 +27,45 @@
 
 configfile: "../config/config.json"
 
+#rna_dir = os.path.join(config["path"]["RNAseq_dir"])
+#id_set = set()
+#for nom_fichier in os.listdir(rna_dir):
+#    if nom_fichier.endswith(".fastq.gz"):
+#        parties = nom_fichier.split('_')
+#        if len(parties) > 8:  
+#            id_part = "_".join(parties[:8])
+#            id_set.add(id_part)
+#id_list = list(id_set)
+
+
+
+import os
+
 rna_dir = os.path.join(config["path"]["RNAseq_dir"])
+
 id_set = set()
 for nom_fichier in os.listdir(rna_dir):
     if nom_fichier.endswith(".fastq.gz"):
-        parties = nom_fichier.split('_')
-        if len(parties) > 8:  
-            id_part = "_".join(parties[:8])
-            id_set.add(id_part)
-id_list = list(id_set)
+        if "_1.fastq.gz" in nom_fichier or "_2.fastq.gz" in nom_fichier:
+            sample_id = nom_fichier.replace("_1.fastq.gz", "").replace("_2.fastq.gz", "")
+            id_set.add(sample_id)
+
+id_list = sorted(id_set)
+
+##
+config["samples"] = {
+    dataset.strip(): [sample.strip() for sample in samples]
+    for dataset, samples in config["samples"].items()
+}
+
+tpp_result_files = [
+    f"results/{dataset}/{sample}.prot.xml"
+    for dataset, samples in config["samples"].items()
+    for sample in samples
+]
+
+
+##
 
 include: "rules/download_genome.smk"  
 include: "rules/star.smk"
@@ -43,21 +73,24 @@ include: "rules/kallisto.smk"
 include: "rules/calling_variants.smk"
 include: "rules/variant_split_apply_merge.smk"
 include: "rules/DRPs.smk"
+#include: "rules/TPP_steps.smk"
 #include: "rules/struct_variation.smk"
 #include: "rules/post_FOMOnet.smk"
 
 rule all:
     input:
-        expand("data/qc/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_fastqc.html", id=id_list),
-        expand("data/trim_galore/{id}/{id}_R2_001.220405.A00516.AHVHTNDSX2_val_2.fq.gz", id=id_list),
-        expand("data/qc_after_trim/{id}/{id}_R1_001.220405.A00516.AHVHTNDSX2_val_1_fastqc.html", id=id_list),
+        expand("data/qc/{id}/{id}_1_fastqc.html", id=id_list),
+        expand("data/trim_galore/{id}/{id}_1_val_1.fq.gz", id=id_list),
+        expand("data/qc_after_trim/{id}/{id}_1_val_1_fastqc.html", id=id_list),
         expand("results/STAR/{id}/Aligned.sortedByCoord.out.bam", id=id_list),
         expand("results/kallisto/{id}/abundance.tsv", id=id_list),
-        expand("results/variants/{id}/20QC_variant.vcf", id=id_list),
-        expand("results/variants/{id}/split_vcf/1_to_2.vcf", id=id_list),
-        expand("results/final/{id}/combined_transcripts.fa", id=id_list),
+        expand("data/references/{id}/exon_data.parquet", id=id_list),
+#        expand("results/variants/{id}/20QC_variant.vcf", id=id_list),
+#        expand("results/variants/{id}/split_vcf/1_to_2.vcf", id=id_list),
+#        expand("results/final/{id}/combined_transcripts.fa", id=id_list),
         expand("results/final/{id}/filtered_transcripts.fa", id=id_list),
-        expand("results/DRP/{id}/figures_WES/strong_evidences_compilation_T.pkl", id=id_list)
+#        expand("results/DRP/{id}/figures_WES/strong_evidences_compilation_T.pkl", id=id_list)
+#        *tpp_result_files
 
 
 rule download_genome:
