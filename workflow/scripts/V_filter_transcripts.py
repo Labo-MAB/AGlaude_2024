@@ -34,7 +34,7 @@ def main():
     # Récupération des chemins depuis snakemake
     combined_fasta = snakemake.input.combined_fasta 
     filtered_fasta = snakemake.output.filtered_fasta 
-    
+
     filter_transcripts(combined_fasta, filtered_fasta)
 
 if __name__ == "__main__":
