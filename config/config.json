@@ -1,8 +1,8 @@
 {
   "path": {
     "fastq": "data/references/fastq/",
-    "RNAseq_dir": "../../data",
-    "RNAseq1_dir": "/mnt/c/Users/Antho/Documents/breast_cancer/data/",
+    "RNAseq1_dir": "../../data",
+    "RNAseq_dir": "../../data/data",
     "chrNameLength": "data/references/star_index/chrNameLength.txt",
     "star_index": "data/references/star_index/",
     "transcriptome": "data/references/transcriptome.fa"
@@ -12,5 +12,15 @@
     "true_hhuman_genome_fa": "http://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz",
     "human_gtf": "https://ftp.ensembl.org/pub/release-113/gtf/homo_sapiens/Homo_sapiens.GRCh38.113.gtf.gz",
     "human_genome_fa": "https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+  },
+  "samples": {
+    "SK-N-Be2C": [
+      "SK-N-Be2C_1-1",
+      "SK-N-Be2C_1-2",
+      "SK-N-Be2C_1-3",
+      "SK-N-Be2C_2-1",
+      "SK-N-Be2C_2-2",
+      "SK-N-Be2C_2-3"
+    ]
   }
 }
