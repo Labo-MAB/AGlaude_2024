@@ -457,43 +457,52 @@ def run_all(remapped_diff_list, input_path):
 
 
 def main():
-    # Snakemake injecte ces variables
     remapped = snakemake.input.remapped_drps
+    same_gene_path = snakemake.input.same_gene
+    reads_stats_path = snakemake.input.reads_stats
     out_comp = snakemake.output.compilation
 
     # Normaliser en liste
     paths = [remapped] if isinstance(remapped, str) else remapped
 
-    # Lancer l’analyse
-    all_counts, strong_ev, retrocopy_clues_dict, alteration_clues_dict, homol = get_all_counts(
-        paths,
-        os.path.dirname(paths[0])
-    )
+    # Lire directement les fichiers fournis par Snakemake
+    reads_stats = pickle.load(open(reads_stats_path, 'rb'))
+    remapped_same_gene = pickle.load(open(same_gene_path, 'rb'))
+    remapped_diff_gene = pickle.load(open(remapped, 'rb'))
 
-    # 1) Construire la structure de base de strong_evidences_compilation_T
-    strong_evidences_compilation_T = {}
-    for exp, evdict in strong_ev.items():
-        if "T_WES" in exp:
-            strong_evidences_compilation_T[exp] = {
-                gene: {'strong': drps, 'clues': [], 'alteration': []}
-                for gene, drps in evdict.items()
+    # En déduire exp_name (si utile pour noms ou figures)
+    exp_path = os.path.dirname(os.path.dirname(remapped))
+    exp_name = os.path.basename(os.path.dirname(remapped))
+
+    # Remplacer cette fonction si elle reste utile
+    all_counts = {
+        exp_name: {
+            'good_reads': reads_stats['good_reads'],
+            'disc_reads': reads_stats['disc_reads'],
+            'remapped_same_gene': len(remapped_same_gene),
+            'remapped_diff_gene': len(remapped_diff_gene)
+        }
+    }
+
+    all_read_infos = {drp[0]['name']: drp for drp in remapped_diff_gene}
+    read_situation_dict = get_read_situation_dict(remapped_diff_gene)
+    all_drp_by_situation = get_all_drp_by_situation(read_situation_dict)
+    strong_ev, retrocopy_clues, alteration_clues, homol = clues_organisation(all_drp_by_situation, all_read_infos)
+
+    # Compilation T uniquement (tu pourrais factoriser le reste comme avant)
+    strong_evidences_compilation_T = {
+        exp_name: {
+            gene: {
+                'strong': drps,
+                'clues': [(k, v) for k, v in retrocopy_clues.items() if gene in k],
+                'alteration': [(k, v) for k, v in alteration_clues.items() if gene in k]
             }
+            for gene, drps in strong_ev.items()
+        }
+    }
 
-    # ─────── Ici on complète les listes 'clues' et 'alteration' ───────
-    for exp in strong_evidences_compilation_T:
-        for gene in strong_evidences_compilation_T[exp]:
-            # ajouter toutes les rétrocopy clues où ce gène apparaît
-            for (g1, g2), drp_list in retrocopy_clues_dict[exp].items():
-                if gene in (g1, g2):
-                    strong_evidences_compilation_T[exp][gene]['clues'].append(((g1, g2), drp_list))
-            # ajouter toutes les alteration clues
-            for (g1, g2), drp_list in alteration_clues_dict[exp].items():
-                if gene in (g1, g2):
-                    strong_evidences_compilation_T[exp][gene]['alteration'].append(((g1, g2), drp_list))
-    # ────────────────────────────────────────────────────────────────
-
-    # 2) Écrire le résultat final
     pickle.dump(strong_evidences_compilation_T, open(out_comp, "wb"))
+
 
 if __name__ == "__main__":
     main()
