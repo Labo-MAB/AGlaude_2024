@@ -1,0 +1,12 @@
+name: vcf_to_bedgraph
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bcftools
+  - bedtools
+  - samtools
+  - ucsc-bedgraphtobigwig
+  - python=3.10
+  - bedops
