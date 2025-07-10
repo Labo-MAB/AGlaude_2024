@@ -23,7 +23,7 @@ try:
         snakemake.input.mutated_output_fasta1,
         snakemake.input.mutated_output_fasta2,
         snakemake.input.mutated_output_fasta3,
-        snakemake.input.mutated_output_fasta4
+        snakemake.input.mutated_output_fasta4,
     ]
     combined_output_fasta = snakemake.output.combined_transcripts
 
