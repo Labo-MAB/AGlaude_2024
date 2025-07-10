@@ -33,29 +33,29 @@ star_alignreads:
     time: 0-2:00:00
 
 build_transcriptome:
-    cpus-per-task: 2
+    cpus-per-task: 1
     mem: 8G
-    time: 0-1:00:00
+    time: 0-00:10:00
 
 kallisto_index:
-    cpus-per-task: 16
-    mem: 20G
-    time: 0-0:30:00
+    cpus-per-task: 4
+    mem: 12G
+    time: 0-0:20:00
 
 kallisto_quant:
-    cpus-per-task: 32
-    mem: 60G
-    time: 0-3:00:00
+    cpus-per-task: 16
+    mem: 40G
+    time: 0-01:00:00
 
 filter_abundance:
-    cpus-per-task: 2
-    mem: 8G
-    time: 0-0:30:00
+    cpus-per-task: 1
+    mem: 2G
+    time: 0-0:05:00
 
 build_filtered_transcriptome:
     cpus-per-task: 2
     mem: 8G
-    time: 0-0:30:00
+    time: 0-0:10:00
 
 rule index_genome:
     cpus-per-task: 2
@@ -97,12 +97,17 @@ split_transcripts_all:
   mem: 6G
   time: "00:30:00"
 
-split_vcf_1_to_9:
+split_vcf_1_to_4:
   cpus-per-task: 1
   mem: 4G
   time: "00:05:00"
 
-split_vcf_10_to_19:
+split_vcf_5_to_9:
+  cpus-per-task: 1
+  mem: 4G
+  time: "00:05:00"
+
+split_vcf_10_to_16:
   cpus-per-task: 1
   mem: 4G
   time: "00:05:00"
@@ -112,20 +117,26 @@ split_vcf_rest:
   mem: 2G
   time: "00:05:00"
 
-apply_variants_1_to_9:
-  cpus-per-task: 2
-  mem: 20G
-  time: "0-00:15:00"
 
-apply_variants_10_to_19:
-  cpus-per-task: 2
-  mem: 20G
-  time: "0-00:15:00"
+apply_variants_1_to_4:
+  cpus-per-task: 3
+  mem: 18G
+  time: "0-00:18:00"
+
+apply_variants_5_to_9:
+  cpus-per-task: 3
+  mem: 48G
+  time: "0-06:18:00"
+
+apply_variants_10_to_16:
+  cpus-per-task: 3
+  mem: 48G
+  time: "0-06:18:00"
 
 apply_variants_rest:
-  cpus-per-task: 2
-  mem: 20G
-  time: "0-00:15:00"
+  cpus-per-task: 3
+  mem: 48G
+  time: "0-06:18:00"
 
 fusion_transcripts:
   cpus-per-task: 2
