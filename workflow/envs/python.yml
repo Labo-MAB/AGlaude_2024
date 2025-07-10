@@ -2,8 +2,9 @@ name: python_env
 channels:
   - conda-forge
   - bioconda
-  - default
+  - defaults
 dependencies:
+  - python=3.9
   - numpy=1.22.3
   - pandas=1.4.2
   - matplotlib=3.5.2
@@ -14,4 +15,7 @@ dependencies:
   - pybedtools=0.9.0
   - pysam=0.19.1
   - pyarrow
-  - Biopython
+  - biopython
+  - intervaltree
+  - pyfaidx
+  - scikit-bio
