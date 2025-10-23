@@ -10,7 +10,7 @@ rule build_exon_dataframe:
     """
     input:
         gtf=rules.download_human_gtf.output.gtf,
-        transcripts_fasta=rules.build_filtered_transcriptome.output.transcriptome_final_custom
+        transcripts_fasta=rules.build__transcriptome.output.transcriptome
     output:
         parquet="data/references/{id}/exon_data.parquet",
         genome_pkl="data/references/{id}/genome_dict.pkl", # pas utile
