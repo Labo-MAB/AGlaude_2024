@@ -1,0 +1,42 @@
+personalized-proteogenomics/
+│
+├── README.md
+├── .gitignore
+├── environment.yml
+├── config/
+│   ├── config.yaml
+│   └── samples.tsv
+│
+├── workflows/
+│   ├── genomics/
+│   │   ├── Snakefile
+│   │   ├── rules/
+│   │   └── scripts/
+│   │
+│   ├── transcriptomics/
+│   │   ├── Snakefile
+│   │   ├── rules/
+│   │   └── scripts/
+│   │
+│   ├── proteomics/
+│   │   ├── Snakefile
+│   │   ├── rules/
+│   │   └── scripts/
+│   │
+│   └── fomonet/
+│       ├── scripts/
+│       └── modules/
+│
+├── figures/
+│   ├── section2_variants/
+│   ├── section3_fomonet/
+│   ├── section4_proteomics/
+│   └── scripts/
+│
+├── docs/
+│   ├── methods_notes.md
+│   ├── results_plan.md
+│   └── decisions.md
+│
+└── results/
+    └── .gitkeep
